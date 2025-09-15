@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transportation English Learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <!-- Quill Editor CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .locked { opacity: 0.5; pointer-events: none; }
+        .modal { transition: opacity 0.3s ease; }
+        .quiz-option.selected { background-color: #3b82f6; color: white; }
+        .quiz-option.correct { background-color: #22c55e; color: white; }
+        .quiz-option.incorrect { background-color: #ef4444; color: white; }
+        .tab-btn.active { border-color: #3b82f6; color: #3b82f6; background-color: #eff6ff; }
+        #material-editor-container { height: 400px; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="w-16 h-16 border-4 border-t-blue-500 border-gray-200 rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="flex items-center justify-center min-h-screen bg-cover bg-center" style="background-image: url('https://blogger.googleusercontent.com/img/a/AVvXsEi8R2GgQbwNbFxIaqnLliEJ-G5WaBQXtA9094A1bPRlsImcjObWj_pUg8AJawHwlUxr6UqcmEprm65H175w9fi3Xk9HCiaTyPLRyO_-Jr2_Vl3qCyG1Fgi4fFNFNIdnq4T98AfvtApLxLU7oIn8EC_D7hWvjboyXn7c2cfIl_E61aYwQ6VwiO4DMg02YdS3');">
+        <div class="w-full max-w-md">
+            <div class="bg-white/20 backdrop-blur-md p-8 rounded-lg shadow-lg">
+                <h2 id="auth-title" class="text-2xl font-bold text-center text-gray-800 mb-6">Login</h2>
+                <form id="login-form" novalidate>
+                    <div class="mb-4">
+                        <label for="login-email" class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                        <input type="email" id="login-email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="login-password" class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                        <input type="password" id="login-password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" required>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Sign In</button>
+                        <a id="show-register-link" href="#" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">Create an Account</a>
+                    </div>
+                </form>
+                <form id="register-form" class="hidden">
+                     <div class="mb-4">
+                        <label for="register-name" class="block text-gray-700 text-sm font-bold mb-2">Full Name</label>
+                        <input type="text" id="register-name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="register-email" class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                        <input type="email" id="register-email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="register-password" class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                        <input type="password" id="register-password" minlength="6" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" required>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Register</button>
+                        <a id="show-login-link" href="#" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">Already have an account?</a>
+                    </div>
+                </form>
+                <p id="auth-error" class="text-red-500 text-xs italic mt-4"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="main-container" class="hidden w-full h-screen p-4">
+        <!-- Student Dashboard -->
+        <div id="student-dashboard" class="hidden h-full">
+            <div class="flex h-full bg-white rounded-lg shadow-lg overflow-hidden">
+                <aside class="w-1/4 bg-gray-800 text-white p-4 overflow-y-auto flex flex-col">
+                    <header class="mb-6">
+                        <h1 class="text-2xl font-bold">English for Transport</h1>
+                        <p id="student-welcome" class="text-sm text-gray-300">Welcome!</p>
+                        <div id="date-time" class="text-xs text-gray-400 mt-2"></div>
+                        <div id="student-score-container" class="mt-4 space-y-3">
+                            <div class="p-3 bg-gray-700 rounded-lg">
+                                <h3 class="text-sm font-bold text-gray-400 uppercase">Total Score</h3>
+                                <p id="student-total-score" class="text-2xl font-bold text-white">0 / 920</p>
+                            </div>
+                            <div class="p-3 bg-blue-800 rounded-lg">
+                                <h3 class="text-sm font-bold text-blue-300 uppercase">Final Grade</h3>
+                                <p id="student-final-grade" class="text-2xl font-bold text-white">0.00</p>
+                            </div>
+                        </div>
+                    </header>
+                    <nav class="flex-grow">
+                        <h2 class="text-xs uppercase font-bold text-gray-400 mb-2">Meetings</h2>
+                        <ul id="meetings-nav" class="space-y-1">
+                            <!-- JS will populate this -->
+                        </ul>
+                    </nav>
+                     <button id="student-logout-btn" class="mt-8 w-full bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition">Logout</button>
+                </aside>
+                <main class="w-3/4 p-6 overflow-y-auto">
+                     <img id="meeting-image" src="https://placehold.co/800x300/e2e8f0/adb5bd?text=Select+a+Meeting" alt="Meeting Topic Image" class="w-full h-48 object-cover rounded-lg mb-6">
+                    <h2 id="content-title" class="text-3xl font-bold mb-4">Welcome</h2>
+                    <div id="content-body" class="prose max-w-none">
+                        <p>Please select a meeting from the side menu to begin.</p>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Lecturer Dashboard -->
+        <div id="lecturer-dashboard" class="hidden h-full bg-white rounded-lg shadow-lg p-6 flex flex-col">
+             <header class="flex justify-between items-start mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Lecturer Dashboard</h1>
+                    <p id="lecturer-welcome" class="text-gray-600">Welcome, Lecturer!</p>
+                </div>
+                <div class="text-right">
+                    <div id="date-time-lecturer" class="text-sm text-gray-500 font-medium"></div>
+                    <button id="lecturer-logout-btn" class="mt-2 bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition">Logout</button>
+                </div>
+            </header>
+            
+            <!-- Tabs -->
+            <div class="border-b border-gray-200 mb-4">
+                <nav class="-mb-px flex space-x-6">
+                    <button id="tab-students" class="tab-btn py-2 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Student Management</button>
+                    <button id="tab-content" class="tab-btn py-2 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Content Management</button>
+                </nav>
+            </div>
+
+            <!-- Student Management View -->
+            <div id="student-management-view" class="flex-grow overflow-y-auto space-y-6">
+                <!-- Summary Table -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-xl font-bold mb-4">Overall Scores Summary</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white">
+                            <thead class="bg-gray-200">
+                                <tr>
+                                    <th class="py-2 px-4 border-b text-left">Student Name</th>
+                                    <th class="py-2 px-4 border-b text-center">Total Score</th>
+                                    <th class="py-2 px-4 border-b text-center">Final Grade (0-100)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="student-summary-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Detailed Submissions Table -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Detailed Submissions</h2>
+                        <div>
+                            <label for="meeting-filter" class="mr-2 text-sm font-medium">Filter by Meeting:</label>
+                            <select id="meeting-filter" class="rounded-md border-gray-300 shadow-sm">
+                                <option value="all">All Meetings</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white">
+                            <thead class="bg-gray-200">
+                                <tr>
+                                    <th class="py-2 px-4 border-b text-left">Student Name</th>
+                                    <th class="py-2 px-4 border-b text-left">Meeting</th>
+                                    <th class="py-2 px-4 border-b text-center">Quiz Score</th>
+                                    <th class="py-2 px-4 border-b text-center">Task Status</th>
+                                    <th class="py-2 px-4 border-b text-center">Grade</th>
+                                    <th class="py-2 px-4 border-b text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="student-submissions-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Management View -->
+            <div id="content-management-view" class="hidden flex-grow overflow-y-auto">
+                 <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-xl font-bold mb-4">Edit Course Content</h2>
+                    <div id="materials-list" class="space-y-4">
+                        <!-- JS will populate this -->
+                    </div>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="alert-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-auto">
+            <h3 id="alert-title" class="text-lg font-bold mb-4">Alert</h3>
+            <p id="alert-message" class="text-gray-700 mb-6"></p>
+            <div class="flex justify-end">
+                <button id="alert-ok-btn" class="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">OK</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-auto">
+            <h3 id="confirm-title" class="text-lg font-bold mb-4">Confirmation</h3>
+            <p id="confirm-message" class="text-gray-700 mb-6"></p>
+            <div class="flex justify-end space-x-4">
+                <button id="confirm-cancel-btn" class="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+                <button id="confirm-ok-btn" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <div id="grading-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+            <h3 class="text-lg font-bold mb-4">Grade Assignment</h3>
+            <form id="grading-form">
+                <input type="hidden" id="assignment-id">
+                <div class="mb-4">
+                    <label for="grade-score" class="block text-sm font-medium text-gray-700">Score (0-100)</label>
+                    <input type="number" id="grade-score" min="0" max="100" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label for="grade-feedback" class="block text-sm font-medium text-gray-700">Feedback</label>
+                    <textarea id="grade-feedback" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancel-grade-btn" class="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">Save Grade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Material Editor Modal -->
+    <div id="material-editor-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-auto">
+            <h3 class="text-xl font-bold mb-4">Edit Material</h3>
+            <form id="material-editor-form">
+                <input type="hidden" id="material-id">
+                <div class="mb-4">
+                    <label for="material-title" class="block text-sm font-medium text-gray-700">Title</label>
+                    <input type="text" id="material-title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Content</label>
+                    <div id="material-editor-container" class="mt-1"></div>
+                </div>
+                <div class="mb-4">
+                    <label for="material-assignment-instruction" class="block text-sm font-medium text-gray-700">Assignment Instruction</label>
+                    <textarea id="material-assignment-instruction" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm font-sans" placeholder="e.g., Please upload your assignment in PDF format."></textarea>
+                </div>
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" id="cancel-material-btn" class="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">Save Material</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quiz Editor Modal -->
+    <div id="quiz-editor-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-auto">
+            <h3 class="text-xl font-bold mb-4">Edit Quiz</h3>
+            <form id="quiz-editor-form">
+                <input type="hidden" id="quiz-id">
+                <div id="questions-container" class="space-y-6 mb-6 max-h-[60vh] overflow-y-auto pr-2">
+                    <!-- JS will populate questions here -->
+                </div>
+                <div class="flex justify-between items-center mt-4">
+                    <button type="button" id="add-question-btn" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600">Add Question</button>
+                    <div class="space-x-4">
+                        <button type="button" id="cancel-quiz-btn" class="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+                        <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">Save Quiz</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Quill Editor JS -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = 'https://uqjdphdmecrwkvikiemy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxamRwaGRtZWNyd2t2aWtpZW15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NTU5NTIsImV4cCI6MjA3MzQzMTk1Mn0.6WCeUM7BRCBDcRDK2E-2XUTTSKu35a_UP9ewpIhlkPU';
+
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            document.body.innerHTML = '<div class="p-8 text-red-500 font-bold text-center">Error: Supabase credentials are not set.</div>';
+        }
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // --- DOM ELEMENTS ---
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const mainContainer = document.getElementById('main-container');
+        const authContainer = document.getElementById('auth-container');
+        const loginForm = document.getElementById('login-form'), registerForm = document.getElementById('register-form'), authError = document.getElementById('auth-error'), showRegisterLink = document.getElementById('show-register-link'), showLoginLink = document.getElementById('show-login-link'), authTitle = document.getElementById('auth-title');
+        const studentDashboard = document.getElementById('student-dashboard'), lecturerDashboard = document.getElementById('lecturer-dashboard');
+        
+        // Modals
+        const alertModal = document.getElementById('alert-modal'), alertTitle = document.getElementById('alert-title'), alertMessage = document.getElementById('alert-message'), alertOkBtn = document.getElementById('alert-ok-btn');
+        const confirmModal = document.getElementById('confirm-modal'), confirmTitle = document.getElementById('confirm-title'), confirmMessage = document.getElementById('confirm-message'), confirmCancelBtn = document.getElementById('confirm-cancel-btn'), confirmOkBtn = document.getElementById('confirm-ok-btn');
+        const gradingModal = document.getElementById('grading-modal'), gradingForm = document.getElementById('grading-form'), cancelGradeBtn = document.getElementById('cancel-grade-btn');
+        const materialEditorModal = document.getElementById('material-editor-modal'), materialEditorForm = document.getElementById('material-editor-form'), cancelMaterialBtn = document.getElementById('cancel-material-btn');
+        const quizEditorModal = document.getElementById('quiz-editor-modal'), quizEditorForm = document.getElementById('quiz-editor-form'), cancelQuizBtn = document.getElementById('cancel-quiz-btn'), addQuestionBtn = document.getElementById('add-question-btn');
+
+        // --- STATE ---
+        let currentUser = null;
+        let currentUserProfile = null;
+        let dateTimeInterval = null;
+        let allCourseContent = [];
+        let quillEditor = null;
+
+        // --- UTILITY FUNCTIONS ---
+        const showLoading = (isLoading) => isLoading ? loadingSpinner.classList.remove('hidden') : loadingSpinner.classList.add('hidden');
+        
+        const showAlert = (message, title = "Alert") => {
+            alertTitle.textContent = title;
+            alertMessage.textContent = message;
+            alertModal.classList.remove('hidden');
+        };
+        alertOkBtn.addEventListener('click', () => alertModal.classList.add('hidden'));
+
+        const showConfirm = (message, title = "Confirmation") => {
+            return new Promise((resolve) => {
+                confirmTitle.textContent = title;
+                confirmMessage.textContent = message;
+                confirmModal.classList.remove('hidden');
+
+                confirmOkBtn.onclick = () => {
+                    confirmModal.classList.add('hidden');
+                    resolve(true);
+                };
+                confirmCancelBtn.onclick = () => {
+                    confirmModal.classList.add('hidden');
+                    resolve(false);
+                };
+            });
+        };
+
+        const showPage = (page) => {
+            authContainer.classList.add('hidden');
+            mainContainer.classList.add('hidden');
+            studentDashboard.classList.add('hidden');
+            lecturerDashboard.classList.add('hidden');
+
+            if (page === 'auth') authContainer.classList.remove('hidden');
+            else if (page === 'student' || page === 'lecturer') {
+                mainContainer.classList.remove('hidden');
+                document.getElementById(`${page}-dashboard`).classList.remove('hidden');
+            }
+        };
+
+        const updateDateTime = (element) => {
+            if (!element) return;
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            element.textContent = now.toLocaleString('en-US', options);
+        };
+        
+        // --- AUTHENTICATION ---
+        const toggleAuthForms = (showRegister) => {
+            loginForm.classList.toggle('hidden', showRegister);
+            registerForm.classList.toggle('hidden', !showRegister);
+            authTitle.textContent = showRegister ? 'Register' : 'Login';
+            authError.textContent = '';
+        };
+
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            authError.textContent = '';
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            if (email === 'guru123' && password === 'guru123') {
+                currentUser = { id: 'lecturer', role: 'lecturer' };
+                await setupLecturerDashboard();
+                showLoading(false);
+                return;
+            }
+
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) authError.textContent = error.message;
+            showLoading(false);
+        };
+        
+        const handleRegister = async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            authError.textContent = '';
+            const fullName = document.getElementById('register-name').value.trim();
+            const email = document.getElementById('register-email').value.trim().toLowerCase();
+            const password = document.getElementById('register-password').value;
+
+            if (!fullName || !email || !password) {
+                authError.textContent = "Please fill in all fields.";
+                showLoading(false);
+                return;
+            }
+
+            try {
+                const { data: existingUser, error: checkError } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .or(`email.eq.${email},full_name.ilike.${fullName}`);
+
+                if (checkError) throw checkError;
+
+                if (existingUser && existingUser.length > 0) {
+                    authError.textContent = 'A user with this email or full name already exists.';
+                    showLoading(false);
+                    return;
+                }
+            } catch (error) {
+                authError.textContent = `Error checking user: ${error.message}`;
+                showLoading(false);
+                return;
+            }
+
+            const { data, error } = await supabase.auth.signUp({ email, password });
+
+            if (error) {
+                 authError.textContent = error.message;
+            } else if (data.user) {
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert({ id: data.user.id, full_name: fullName, email: email });
+                if (profileError) {
+                    authError.textContent = profileError.message;
+                } else {
+                    showAlert('Registration successful! Please check your email to verify your account.', 'Success');
+                    toggleAuthForms(false);
+                }
+            }
+            showLoading(false);
+        };
+        
+        const handleLogout = async () => {
+            showLoading(true);
+            if (dateTimeInterval) clearInterval(dateTimeInterval);
+            if (currentUser && currentUser.id !== 'lecturer') {
+                 await supabase.auth.signOut();
+            }
+            currentUser = null;
+            currentUserProfile = null;
+            showPage('auth');
+            showLoading(false);
+        };
+
+        // --- STUDENT DASHBOARD ---
+        const setupStudentDashboard = async () => {
+            const studentWelcome = document.getElementById('student-welcome');
+            const dateTimeEl = document.getElementById('date-time');
+            
+            studentWelcome.textContent = `Welcome, ${currentUserProfile.full_name}!`;
+            if (dateTimeInterval) clearInterval(dateTimeInterval);
+            updateDateTime(dateTimeEl);
+            dateTimeInterval = setInterval(() => updateDateTime(dateTimeEl), 1000);
+            
+            await refreshStudentNav();
+            await displayStudentTotalScore();
+            
+            document.getElementById('student-logout-btn').addEventListener('click', handleLogout);
+            showPage('student');
+        };
+
+        const displayStudentTotalScore = async () => {
+            const MAX_QUIZ_SCORE_PER_MEETING = 15;
+            const MAX_ASSIGNMENT_SCORE_PER_MEETING = 100;
+            const TOTAL_MEETINGS = 8;
+            const TOTAL_POSSIBLE_SCORE = (MAX_QUIZ_SCORE_PER_MEETING + MAX_ASSIGNMENT_SCORE_PER_MEETING) * TOTAL_MEETINGS;
+
+            let totalScoreAchieved = 0;
+            const { data: quizzes } = await supabase.from('quiz_submissions').select('score').eq('user_id', currentUser.id);
+            const { data: assignments } = await supabase.from('assignments').select('grade').eq('user_id', currentUser.id);
+
+            if (quizzes) quizzes.forEach(q => totalScoreAchieved += (q.score || 0));
+            if (assignments) assignments.forEach(a => totalScoreAchieved += (parseInt(a.grade) || 0));
+
+            const finalGrade = TOTAL_POSSIBLE_SCORE > 0 ? (totalScoreAchieved / TOTAL_POSSIBLE_SCORE) * 100 : 0;
+
+            document.getElementById('student-total-score').textContent = `${totalScoreAchieved} / ${TOTAL_POSSIBLE_SCORE}`;
+            document.getElementById('student-final-grade').textContent = finalGrade.toFixed(2);
+        };
+
+        const refreshStudentNav = async () => {
+            const meetingsNav = document.getElementById('meetings-nav');
+            try {
+                showLoading(true);
+                const { data: meetings, error: meetingsError } = await supabase.from('materials').select('*').order('meeting_number', { ascending: true });
+                if (meetingsError) throw meetingsError;
+
+                const { data: progress, error: progressError } = await supabase.from('student_progress').select('*').eq('user_id', currentUser.id);
+                if (progressError) throw progressError;
+
+                let lastCompleted = 0;
+                progress.forEach(p => {
+                    if (p.assignment_completed) {
+                        lastCompleted = Math.max(lastCompleted, p.meeting_number);
+                    }
+                });
+
+                meetingsNav.innerHTML = meetings.map(m => {
+                    const isLocked = m.meeting_number > 1 && m.meeting_number > lastCompleted + 1;
+                    const progressStatus = progress.find(p => p.meeting_number === m.meeting_number);
+                    let statusIcon = '';
+                    if (progressStatus?.assignment_completed) {
+                        statusIcon = '<span class="text-green-400 ml-2">✔</span>';
+                    } else if (progressStatus?.attended) {
+                        statusIcon = '<span class="text-yellow-400 ml-2">●</span>';
+                    }
+
+                    return `
+                        <li>
+                            <a href="#" data-meeting-id="${m.id}" class="flex items-center p-2 rounded-md hover:bg-gray-700 ${isLocked ? 'locked' : ''}">
+                                <span class="flex-grow">Meeting ${m.meeting_number}: ${m.title}</span>
+                                ${statusIcon}
+                                ${isLocked ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>' : ''}
+                            </a>
+                        </li>`;
+                }).join('');
+
+                meetingsNav.querySelectorAll('a:not(.locked)').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        loadMeetingContent(link.dataset.meetingId);
+                    });
+                });
+
+            } catch (error) {
+                console.error("Error refreshing student nav:", error);
+                meetingsNav.innerHTML = `<li class="p-2 text-red-400">Error loading meetings.</li>`;
+            } finally {
+                showLoading(false);
+            }
+        };
+        
+        const loadMeetingContent = async (meetingId) => {
+            const contentTitle = document.getElementById('content-title');
+            const contentBody = document.getElementById('content-body');
+            const meetingImage = document.getElementById('meeting-image');
+            
+            try {
+                showLoading(true);
+                const { data: meeting, error } = await supabase.from('materials').select('*').eq('id', meetingId).single();
+                if (error) throw error;
+                
+                const { data: progress } = await supabase.from('student_progress').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
+                
+                contentTitle.textContent = `Meeting ${meeting.meeting_number}: ${meeting.title}`;
+                meetingImage.src = meeting.image_url || `https://placehold.co/800x300/e2e8f0/adb5bd?text=Meeting+${meeting.meeting_number}`;
+                
+                let html = '';
+
+                // Attendance section (moved to top)
+                html += `<div class="mb-6 p-4 border rounded-lg bg-gray-50">
+                            <h3 class="text-xl font-bold mb-2">Attendance</h3>
+                            ${progress?.attended 
+                                ? '<p class="text-green-600 font-semibold">✔ You have marked your attendance for this meeting.</p>'
+                                : `<p class="mb-2">Click the button below to mark your attendance.</p><button id="attend-btn" data-meeting-number="${meeting.meeting_number}" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">Mark Attendance</button>`
+                            }
+                         </div>`;
+
+                // Material content
+                html += `<div class="ql-snow"><div class="ql-editor">${meeting.content}</div></div>`;
+                         
+                const { data: quiz, error: quizError } = await supabase.from('quizzes').select('*').eq('material_id', meetingId).single();
+                if (quiz && !quizError) {
+                     const { data: quizSubmission } = await supabase.from('quiz_submissions').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
+
+                    html += `<div class="mt-8 p-4 border rounded-lg">
+                                <h3 class="text-xl font-bold mb-2">Quiz</h3>`;
+                    if(quizSubmission) {
+                        html += `<p class="text-green-600 font-semibold">✔ Quiz Completed! Your score: ${quizSubmission.score}/${quizSubmission.total_questions}</p>`;
+                    } else {
+                        html += `<div id="quiz-container">`;
+                        const questions = quiz.questions; 
+                        questions.forEach((q, index) => {
+                            html += `<div class="mb-4">
+                                       <p class="font-semibold">${index + 1}. ${q.question}</p>
+                                       <div class="space-y-2 mt-2" data-question-index="${index}">
+                                         ${q.options.map((opt, i) => `<button class="quiz-option block w-full text-left p-2 border rounded-md" data-option-index="${i}">${opt}</button>`).join('')}
+                                       </div>
+                                     </div>`;
+                        });
+                        html += `<button id="submit-quiz-btn" data-quiz-id="${quiz.id}" data-meeting-number="${meeting.meeting_number}" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">Submit Quiz</button>
+                                 <p id="quiz-result" class="mt-4 font-bold"></p>`;
+                    }
+                    html += `</div>`;
+                }
+
+                const { data: assignment } = await supabase.from('assignments').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
+                 html += `<div class="mt-8 p-4 border rounded-lg">
+                            <h3 class="text-xl font-bold mb-2">Assignment Submission</h3>`;
+                if(assignment) {
+                     html += `<p class="text-green-600 font-semibold">✔ You have submitted your assignment.</p>
+                              <p class="text-sm mt-2">File: <a href="${assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">${assignment.file_url.split('/').pop()}</a></p>
+                              ${assignment.grade ? `<p class="mt-2 font-semibold">Grade: ${assignment.grade}</p><p class="mt-1 italic">Feedback: ${assignment.feedback || 'No feedback provided.'}</p>` : '<p class="mt-2 text-gray-600">Waiting for grade.</p>'}`;
+                } else {
+                    html += `<p class="mb-2">${meeting.assignment_instruction || 'Upload your assignment file here.'}</p>
+                             <input type="file" id="assignment-file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                             <button id="upload-assignment-btn" data-meeting-number="${meeting.meeting_number}" class="mt-4 bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-600">Upload Assignment</button>`;
+                }
+                 html += `</div>`;
+
+                contentBody.innerHTML = html;
+                addMeetingEventListeners();
+
+            } catch (error) {
+                console.error("Error loading meeting content:", error);
+                contentBody.innerHTML = `<p class="text-red-500">Failed to load content. Please try again later.</p>`;
+            } finally {
+                showLoading(false);
+            }
+        };
+        
+        const addMeetingEventListeners = () => {
+            const attendBtn = document.getElementById('attend-btn');
+            if (attendBtn) {
+                attendBtn.addEventListener('click', async () => {
+                    const meetingNumber = attendBtn.dataset.meetingNumber;
+                    showLoading(true);
+                    const { error } = await supabase.from('student_progress').upsert({ user_id: currentUser.id, meeting_number: meetingNumber, attended: true }, { onConflict: 'user_id, meeting_number' });
+                    if (error) showAlert(error.message);
+                    else {
+                        showAlert('Attendance marked successfully!', 'Success');
+                        const {data} = await supabase.from('materials').select('id').eq('meeting_number', meetingNumber).single();
+                        loadMeetingContent(data.id);
+                        refreshStudentNav();
+                    }
+                    showLoading(false);
+                });
+            }
+
+            document.querySelectorAll('.quiz-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.parentElement.querySelectorAll('.quiz-option').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                });
+            });
+
+            const submitQuizBtn = document.getElementById('submit-quiz-btn');
+            if(submitQuizBtn) {
+                submitQuizBtn.addEventListener('click', async () => {
+                    const { quizId, meetingNumber } = submitQuizBtn.dataset;
+                    const { data: quiz } = await supabase.from('quizzes').select('questions').eq('id', quizId).single();
+                    const questions = quiz.questions;
+                    
+                    let score = 0;
+                    let answeredCount = 0;
+                    
+                    questions.forEach((q, index) => {
+                         const container = document.querySelector(`[data-question-index="${index}"]`);
+                         const selectedOption = container.querySelector('.quiz-option.selected');
+                         if(selectedOption) {
+                             answeredCount++;
+                             const selectedIndex = parseInt(selectedOption.dataset.optionIndex);
+                             if (selectedIndex === q.answer) {
+                                 score++;
+                                 selectedOption.classList.add('correct');
+                             } else {
+                                 selectedOption.classList.add('incorrect');
+                                 container.querySelector(`[data-option-index="${q.answer}"]`).classList.add('correct');
+                             }
+                         }
+                    });
+
+                    if (answeredCount !== questions.length) {
+                        showAlert('Please answer all questions before submitting.');
+                        return;
+                    }
+                    
+                    document.querySelectorAll('.quiz-option').forEach(b => b.disabled = true);
+                    submitQuizBtn.disabled = true;
+
+                    document.getElementById('quiz-result').textContent = `You scored ${score} out of ${questions.length}.`;
+                    
+                    const { error } = await supabase.from('quiz_submissions').insert({ user_id: currentUser.id, meeting_number: meetingNumber, score, total_questions: questions.length });
+                     if (error) showAlert(error.message);
+                     await displayStudentTotalScore();
+                });
+            }
+
+            const uploadBtn = document.getElementById('upload-assignment-btn');
+            if(uploadBtn) {
+                 uploadBtn.addEventListener('click', async () => {
+                    const meetingNumber = uploadBtn.dataset.meetingNumber;
+                    const fileInput = document.getElementById('assignment-file');
+                    const file = fileInput.files[0];
+
+                    if (!file) { showAlert('Please select a file to upload.'); return; }
+
+                    showLoading(true);
+                    const filePath = `${currentUser.id}/${meetingNumber}-${file.name}`;
+                    const { error: uploadError } = await supabase.storage.from('assignments').upload(filePath, file, { upsert: true });
+
+                    if (uploadError) { showAlert(`Upload failed: ${uploadError.message}`); showLoading(false); return; }
+
+                    const { data: { publicUrl } } = supabase.storage.from('assignments').getPublicUrl(filePath);
+
+                    const { error: dbError } = await supabase.from('assignments').upsert({ user_id: currentUser.id, meeting_number: meetingNumber, file_url: publicUrl }, { onConflict: 'user_id, meeting_number' });
+
+                    if (dbError) { showAlert(`Failed to save submission: ${dbError.message}`); showLoading(false); return; }
+                    
+                     const { error: progressError } = await supabase.from('student_progress').upsert({ user_id: currentUser.id, meeting_number: meetingNumber, assignment_completed: true, attended: true }, { onConflict: 'user_id, meeting_number' });
+                     if (progressError) showAlert(progressError.message);
+                    
+                    showAlert('Assignment uploaded successfully!', 'Success');
+                    const {data} = await supabase.from('materials').select('id').eq('meeting_number', meetingNumber).single();
+                    loadMeetingContent(data.id);
+                    refreshStudentNav();
+                    showLoading(false);
+                 });
+            }
+        };
+
+        // --- LECTURER DASHBOARD ---
+        const setupLecturerDashboard = async () => {
+            const lecturerWelcome = document.getElementById('lecturer-welcome');
+            const dateTimeLecturerEl = document.getElementById('date-time-lecturer');
+            
+            const hour = new Date().getHours();
+            let greeting = (hour < 12) ? 'Good morning' : (hour < 18) ? 'Good afternoon' : 'Good evening';
+            lecturerWelcome.textContent = `${greeting}, Lecturer!`;
+
+            if (dateTimeInterval) clearInterval(dateTimeInterval);
+            updateDateTime(dateTimeLecturerEl);
+            dateTimeInterval = setInterval(() => updateDateTime(dateTimeLecturerEl), 1000);
+
+            document.getElementById('lecturer-logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('tab-students').addEventListener('click', () => switchLecturerTab('students'));
+            document.getElementById('tab-content').addEventListener('click', () => switchLecturerTab('content'));
+            
+            await loadAllSubmissions();
+            await setupContentManagement();
+            
+            const filter = document.getElementById('meeting-filter');
+            filter.innerHTML = '<option value="all">All Meetings</option>';
+            for(let i = 1; i <= 8; i++) { filter.add(new Option(`Meeting ${i}`, i)); }
+            filter.addEventListener('change', (e) => renderSubmissions(e.target.value));
+
+            switchLecturerTab('students');
+            showPage('lecturer');
+        };
+
+        const switchLecturerTab = (tabName) => {
+            const studentView = document.getElementById('student-management-view');
+            const contentView = document.getElementById('content-management-view');
+            const studentTab = document.getElementById('tab-students');
+            const contentTab = document.getElementById('tab-content');
+
+            if (tabName === 'students') {
+                studentView.classList.remove('hidden');
+                contentView.classList.add('hidden');
+                studentTab.classList.add('active');
+                contentTab.classList.remove('active');
+            } else {
+                studentView.classList.add('hidden');
+                contentView.classList.remove('hidden');
+                studentTab.classList.remove('active');
+                contentTab.classList.add('active');
+            }
+        };
+        
+        // --- Student Management ---
+        let allSubmissionsData = [];
+        const loadAllSubmissions = async () => {
+             try {
+                showLoading(true);
+                 let { data, error } = await supabase.from('profiles').select(`id, full_name, email, assignments ( * ), quiz_submissions ( * )`);
+                if (error) throw error;
+                allSubmissionsData = data;
+                renderSubmissions();
+                renderSummaryTable();
+             } catch(error) {
+                console.error("Error loading submissions:", error);
+                showAlert(`Failed to load student data: ${error.message}`);
+             } finally { showLoading(false); }
+        };
+
+        const renderSummaryTable = () => {
+            const summaryTableBody = document.getElementById('student-summary-table');
+            const studentsWithActivity = allSubmissionsData.filter(s => s.assignments.length > 0 || s.quiz_submissions.length > 0);
+
+            const MAX_QUIZ_SCORE_PER_MEETING = 15;
+            const MAX_ASSIGNMENT_SCORE_PER_MEETING = 100;
+            const TOTAL_MEETINGS = 8;
+            const TOTAL_POSSIBLE_SCORE = (MAX_QUIZ_SCORE_PER_MEETING + MAX_ASSIGNMENT_SCORE_PER_MEETING) * TOTAL_MEETINGS;
+            
+            if (studentsWithActivity.length === 0) {
+                 summaryTableBody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-gray-500">No student activity found yet.</td></tr>';
+                 return;
+            }
+
+            const summaryData = studentsWithActivity.map(student => {
+                let totalScore = 0;
+                student.quiz_submissions.forEach(q => totalScore += (q.score || 0));
+                student.assignments.forEach(a => totalScore += (parseInt(a.grade) || 0));
+                const finalGrade = TOTAL_POSSIBLE_SCORE > 0 ? (totalScore / TOTAL_POSSIBLE_SCORE) * 100 : 0;
+                return { name: student.full_name, score: totalScore, grade: finalGrade };
+            }).sort((a, b) => b.score - a.score);
+
+            summaryTableBody.innerHTML = summaryData.map(s => `
+                <tr class="hover:bg-gray-50">
+                    <td class="py-2 px-4 border-b">${s.name}</td>
+                    <td class="py-2 px-4 border-b text-center font-bold">${s.score} / ${TOTAL_POSSIBLE_SCORE}</td>
+                    <td class="py-2 px-4 border-b text-center font-bold text-blue-600">${s.grade.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        };
+        
+        const renderSubmissions = (filter = 'all') => {
+             const tableBody = document.getElementById('student-submissions-table');
+             let html = '';
+            const studentsWithActivity = allSubmissionsData.filter(s => s.assignments.length > 0 || s.quiz_submissions.length > 0);
+
+            if (studentsWithActivity.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-500">No student submissions found yet.</td></tr>';
+                 return;
+            }
+
+            studentsWithActivity.forEach(student => {
+                const activities = {};
+                for (let i = 1; i <= 8; i++) {
+                    activities[i] = {
+                        quiz: student.quiz_submissions.find(qs => qs.meeting_number === i),
+                        assignment: student.assignments.find(a => a.meeting_number === i)
+                    };
+                }
+
+                for (const meetingNumber in activities) {
+                    const activity = activities[meetingNumber];
+                    if ((filter === 'all' || meetingNumber == filter) && (activity.quiz || activity.assignment)) {
+                        const quizScore = activity.quiz ? `${activity.quiz.score}/${activity.quiz.total_questions}` : 'N/A';
+                        const taskStatus = activity.assignment ? `<a href="${activity.assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">Submitted</a>` : 'Not Submitted';
+                        const grade = activity.assignment?.grade ?? 'Not Graded';
+                        
+                        html += `
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-2 px-4 border-b">${student.full_name}</td>
+                                <td class="py-2 px-4 border-b">Meeting ${meetingNumber}</td>
+                                <td class="py-2 px-4 border-b text-center">${quizScore}</td>
+                                <td class="py-2 px-4 border-b text-center">${taskStatus}</td>
+                                <td class="py-2 px-4 border-b text-center">${grade}</td>
+                                <td class="py-2 px-4 border-b text-center space-x-1">
+                                    ${activity.assignment ? `<button data-assignment-id="${activity.assignment.id}" class="grade-btn bg-blue-500 text-white text-xs py-1 px-2 rounded hover:bg-blue-600">Grade</button>` : ''}
+                                    ${(activity.assignment || activity.quiz) ? `<button data-user-id="${student.id}" data-meeting-number="${meetingNumber}" class="reset-btn bg-red-500 text-white text-xs py-1 px-2 rounded hover:bg-red-600">Reset</button>` : ''}
+                                </td>
+                            </tr>`;
+                    }
+                }
+            });
+
+             tableBody.innerHTML = html || '<tr><td colspan="6" class="text-center p-4 text-gray-500">No submissions for this filter.</td></tr>';
+             addLecturerEventListeners();
+        };
+        
+        const addLecturerEventListeners = () => {
+            document.querySelectorAll('.grade-btn').forEach(btn => {
+                 btn.addEventListener('click', () => {
+                    const assignmentId = btn.dataset.assignmentId;
+                    const student = allSubmissionsData.find(s => s.assignments.some(a => a.id == assignmentId));
+                    const assignment = student.assignments.find(a => a.id == assignmentId);
+                    openGradingModal(assignment);
+                 });
+            });
+            document.querySelectorAll('.reset-btn').forEach(btn => {
+                 btn.addEventListener('click', async () => {
+                    const { userId, meetingNumber } = btn.dataset;
+                    if(await showConfirm('Are you sure you want to reset this student\'s progress for this meeting? Their quiz and assignment submission will be deleted.', 'Confirm Reset')) {
+                        handleReset(userId, meetingNumber);
+                    }
+                 });
+            });
+        };
+
+        const openGradingModal = (assignment) => {
+             gradingForm.reset();
+             document.getElementById('assignment-id').value = assignment.id;
+             document.getElementById('grade-score').value = assignment.grade || '';
+             document.getElementById('grade-feedback').value = assignment.feedback || '';
+             gradingModal.classList.remove('hidden');
+        };
+
+        gradingForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            const assignmentId = document.getElementById('assignment-id').value;
+            const score = document.getElementById('grade-score').value;
+            const feedback = document.getElementById('grade-feedback').value;
+
+            const { error } = await supabase.from('assignments').update({ grade: score, feedback: feedback }).eq('id', assignmentId);
+            if(error) showAlert(`Failed to save grade: ${error.message}`);
+            else {
+                showAlert('Grade saved successfully!', 'Success');
+                gradingModal.classList.add('hidden');
+                loadAllSubmissions();
+            }
+            showLoading(false);
+        });
+
+        const handleReset = async (userId, meetingNumber) => {
+             showLoading(true);
+             try {
+                const student = allSubmissionsData.find(s => s.id === userId);
+                const assignment = student?.assignments.find(a => a.meeting_number == meetingNumber);
+                if (assignment) {
+                    const filePath = `${userId}/${assignment.file_url.split('/').pop()}`;
+                    await supabase.storage.from('assignments').remove([filePath]);
+                }
+                 await supabase.from('assignments').delete().match({ user_id: userId, meeting_number: meetingNumber });
+                 await supabase.from('quiz_submissions').delete().match({ user_id: userId, meeting_number: meetingNumber });
+                 await supabase.from('student_progress').delete().match({ user_id: userId, meeting_number: meetingNumber });
+                 
+                 showAlert('Student progress has been reset.', 'Success');
+                 loadAllSubmissions();
+             } catch(error) {
+                showAlert(`Failed to reset progress: ${error.message}`);
+             } finally { showLoading(false); }
+        };
+
+        cancelGradeBtn.addEventListener('click', () => gradingModal.classList.add('hidden'));
+
+        // --- Content Management ---
+        const setupContentManagement = async () => {
+            try {
+                showLoading(true);
+                const { data: materials, error: mError } = await supabase.from('materials').select('*').order('meeting_number');
+                if (mError) throw mError;
+
+                const { data: quizzes, error: qError } = await supabase.from('quizzes').select('*');
+                if (qError) throw qError;
+
+                allCourseContent = materials.map(m => ({
+                    ...m,
+                    quiz: quizzes.find(q => q.material_id === m.id)
+                }));
+                renderContentManagement();
+            } catch (error) {
+                console.error("Error setting up content management:", error);
+                document.getElementById('materials-list').innerHTML = `<p class="text-red-500">Error loading course content.</p>`;
+            } finally {
+                showLoading(false);
+            }
+        };
+
+        const renderContentManagement = () => {
+            const listEl = document.getElementById('materials-list');
+            listEl.innerHTML = allCourseContent.map(content => `
+                <div class="bg-white p-4 rounded-lg shadow flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-lg">Meeting ${content.meeting_number}: ${content.title}</h3>
+                        <p class="text-sm text-gray-500">${content.quiz ? `${content.quiz.questions.length} quiz questions` : 'No quiz for this meeting'}</p>
+                    </div>
+                    <div class="space-x-2">
+                        <button data-id="${content.id}" class="edit-material-btn bg-yellow-500 text-white text-sm py-1 px-3 rounded hover:bg-yellow-600">Edit Material</button>
+                        ${content.quiz ? `<button data-id="${content.id}" class="edit-quiz-btn bg-indigo-500 text-white text-sm py-1 px-3 rounded hover:bg-indigo-600">Edit Quiz</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.edit-material-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const content = allCourseContent.find(c => c.id == e.target.dataset.id);
+                openMaterialEditor(content);
+            }));
+
+            document.querySelectorAll('.edit-quiz-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const content = allCourseContent.find(c => c.id == e.target.dataset.id);
+                openQuizEditor(content.quiz);
+            }));
+        };
+
+        const openMaterialEditor = (material) => {
+            document.getElementById('material-id').value = material.id;
+            document.getElementById('material-title').value = material.title;
+            document.getElementById('material-assignment-instruction').value = material.assignment_instruction || '';
+            
+            if (quillEditor) {
+                quillEditor.root.innerHTML = material.content;
+            }
+            materialEditorModal.classList.remove('hidden');
+        };
+
+        materialEditorForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            const id = document.getElementById('material-id').value;
+            const title = document.getElementById('material-title').value;
+            const content = quillEditor.root.innerHTML;
+            const assignment_instruction = document.getElementById('material-assignment-instruction').value;
+            const { error } = await supabase.from('materials').update({ title, content, assignment_instruction }).eq('id', id);
+            
+            if (error) showAlert(`Failed to save material: ${error.message}`);
+            else {
+                showAlert('Material saved successfully!', 'Success');
+                materialEditorModal.classList.add('hidden');
+                setupContentManagement(); // Refresh
+            }
+            showLoading(false);
+        });
+
+        cancelMaterialBtn.addEventListener('click', () => materialEditorModal.classList.add('hidden'));
+        
+        const selectImageForEditor = () => {
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*');
+            input.click();
+
+            input.onchange = async () => {
+                const file = input.files[0];
+                if (file) {
+                    showLoading(true);
+                    const fileName = `${Date.now()}-${file.name}`;
+                    const { error: uploadError } = await supabase.storage.from('materials-images').upload(fileName, file);
+                    
+                    if(uploadError) {
+                        showAlert(`Image upload failed: ${uploadError.message}`);
+                        showLoading(false);
+                        return;
+                    }
+
+                    const { data: { publicUrl } } = supabase.storage.from('materials-images').getPublicUrl(fileName);
+                    const range = quillEditor.getSelection(true);
+                    quillEditor.insertEmbed(range.index, 'image', publicUrl);
+                    quillEditor.setSelection(range.index + 1);
+                    showLoading(false);
+                }
+            };
+        };
+
+
+        const openQuizEditor = (quiz) => {
+            quizEditorForm.reset();
+            document.getElementById('quiz-id').value = quiz.id;
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+            quiz.questions.forEach((q, index) => {
+                addQuestionToForm(q, index);
+            });
+            quizEditorModal.classList.remove('hidden');
+        };
+        
+        const addQuestionToForm = (questionData = {}, index) => {
+            const container = document.getElementById('questions-container');
+            const questionId = `q-${index}`;
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'p-4 border rounded-lg bg-gray-50 relative';
+            questionDiv.id = questionId;
+            questionDiv.innerHTML = `
+                <button type="button" class="delete-question-btn absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold text-lg">&times;</button>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Question ${index + 1}</label>
+                <input type="text" class="question-text w-full p-2 border rounded mb-2" value="${questionData.question || ''}" placeholder="Question text" required>
+                <div class="grid grid-cols-2 gap-2">
+                    ${[0, 1, 2, 3].map(i => `
+                        <div class="flex items-center">
+                            <input type="radio" name="answer-${questionId}" value="${i}" class="correct-answer h-4 w-4" ${questionData.answer === i ? 'checked' : ''} required>
+                            <input type="text" class="option-text ml-2 w-full p-2 border rounded" value="${(questionData.options && questionData.options[i]) || ''}" placeholder="Option ${i + 1}" required>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            container.appendChild(questionDiv);
+            questionDiv.querySelector('.delete-question-btn').addEventListener('click', () => {
+                questionDiv.remove();
+                document.querySelectorAll('#questions-container > div').forEach((div, i) => {
+                    div.querySelector('label').textContent = `Question ${i + 1}`;
+                });
+            });
+        };
+
+        addQuestionBtn.addEventListener('click', () => {
+            const count = document.getElementById('questions-container').childElementCount;
+            addQuestionToForm({}, count);
+        });
+
+        quizEditorForm.addEventListener('submit', async(e) => {
+            e.preventDefault();
+            showLoading(true);
+            const quizId = document.getElementById('quiz-id').value;
+            const newQuestions = [];
+            const questionDivs = document.querySelectorAll('#questions-container > div');
+            
+            for (const div of questionDivs) {
+                const questionText = div.querySelector('.question-text').value;
+                const options = Array.from(div.querySelectorAll('.option-text')).map(opt => opt.value);
+                const answerRadio = div.querySelector('.correct-answer:checked');
+                
+                if (!questionText || options.some(o => !o) || !answerRadio) {
+                    showAlert('Please fill out all fields for every question.');
+                    showLoading(false);
+                    return;
+                }
+                const answer = parseInt(answerRadio.value);
+                newQuestions.push({ question: questionText, options, answer });
+            }
+
+            const { error } = await supabase.from('quizzes').update({ questions: newQuestions }).eq('id', quizId);
+            if (error) showAlert(`Failed to save quiz: ${error.message}`);
+            else {
+                showAlert('Quiz saved successfully!', 'Success');
+                quizEditorModal.classList.add('hidden');
+                setupContentManagement();
+            }
+            showLoading(false);
+        });
+        
+        cancelQuizBtn.addEventListener('click', () => quizEditorModal.classList.add('hidden'));
+
+        // --- APP INITIALIZATION ---
+        const loadInitialData = async (user) => {
+            showLoading(true);
+            try {
+                const { data: profile, error } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+
+                if (error && error.code !== 'PGRST116') { throw error; }
+                if (!profile) { 
+                    await new Promise(res => setTimeout(res, 1500));
+                    const { data: retryProfile, error: retryError } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+                    if(retryError || !retryProfile) throw new Error("User profile not found. Please try logging in again.");
+                    currentUserProfile = retryProfile;
+                } else {
+                    currentUserProfile = profile;
+                }
+                
+                currentUser = user;
+                await setupStudentDashboard();
+            } catch (error) {
+                console.error("Error loading initial data:", error);
+                showAlert(`A critical error occurred: ${error.message}`);
+                await handleLogout();
+            } finally { showLoading(false); }
+        };
+        
+        const initializeApp = () => {
+            showPage('auth');
+            loginForm.addEventListener('submit', handleLogin);
+            registerForm.addEventListener('submit', handleRegister);
+            showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthForms(true); });
+            showLoginLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthForms(false); });
+
+            // Initialize Quill Editor
+            quillEditor = new Quill('#material-editor-container', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': [] }],
+                        ['link', 'image', 'clean']
+                    ]
+                }
+            });
+            quillEditor.getModule('toolbar').addHandler('image', selectImageForEditor);
+            
+            supabase.auth.onAuthStateChange((_event, session) => {
+                const user = session?.user;
+                if (user) {
+                    if (!currentUser || currentUser.id !== user.id) {
+                         loadInitialData(user);
+                    }
+                } else {
+                    if (currentUser && currentUser.id !== 'lecturer') {
+                        showPage('auth');
+                    }
+                }
+            });
+        };
+
+        initializeApp();
+
+    </script>
+</body>
+</html>
+
