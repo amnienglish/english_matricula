@@ -1117,13 +1117,15 @@
 
             const renderQuestionBody = (type, data) => {
                 if (type === 'fill_in_the_blank') {
+                    // If editing, reconstruct the format for the lecturer by putting the answer back inside the brackets
+                    const displayText = (data.question && data.answer) 
+                        ? data.question.replace(/\[BLANK\]/i, `[${data.answer}]`)
+                        : (data.question || '');
+
                     return `
                         <div class="mt-2">
-                             <input type="text" class="question-text w-full p-2 border rounded" value="${data.question || ''}" placeholder="Question text, e.g., The capital of Indonesia is [BLANK].">
-                        </div>
-                        <div class="mt-2">
-                            <label class="block text-sm font-medium text-gray-700">Correct Answer</label>
-                            <input type="text" class="correct-answer-text w-full p-2 border rounded" value="${data.answer || ''}" placeholder="e.g., Jakarta">
+                             <input type="text" class="question-text w-full p-2 border rounded" value="${displayText}" placeholder="Type sentence with answer in [brackets].">
+                             <p class="text-xs text-gray-500 mt-1">Example: The capital of Indonesia is [Jakarta].</p>
                         </div>
                     `;
                 } else { // multiple_choice
@@ -1184,53 +1186,58 @@
             const newQuestions = [];
             const questionDivs = document.querySelectorAll('#questions-container > div');
             
-            let formIsValid = true;
-            for (const div of questionDivs) {
+            for (let i = 0; i < questionDivs.length; i++) {
+                const div = questionDivs[i];
+                const questionNumber = i + 1;
                 const type = div.querySelector('.question-type-selector').value;
                 const questionText = div.querySelector('.question-text').value.trim();
 
                 if (!questionText) {
-                    formIsValid = false;
-                    break;
+                    showAlert(`Error in Question ${questionNumber}: The question text cannot be empty.`);
+                    showLoading(false);
+                    return;
                 }
 
                 if (type === 'multiple_choice') {
                     const options = Array.from(div.querySelectorAll('.option-text')).map(opt => opt.value.trim());
                     const answerRadio = div.querySelector('.correct-answer-radio:checked');
                     
-                    if (options.some(o => !o) || !answerRadio) {
-                        formIsValid = false;
-                        break;
+                    if (options.some(o => !o)) {
+                         showAlert(`Error in Question ${questionNumber}: Please fill out all four option fields.`);
+                         showLoading(false);
+                         return;
+                    }
+
+                    if (!answerRadio) {
+                        showAlert(`Error in Question ${questionNumber}: Please select a correct answer.`);
+                        showLoading(false);
+                        return;
                     }
                     const answer = parseInt(answerRadio.value);
                     newQuestions.push({ type: 'multiple_choice', question: questionText, options, answer });
                 } else { // fill_in_the_blank
-                    const answer = div.querySelector('.correct-answer-text').value.trim();
-                    if (!answer) {
-                        formIsValid = false;
-                        break;
-                    }
-                    if (!questionText.toLowerCase().includes('[blank]')) {
-                        showAlert('For Fill in the Blank questions, the question text must include `[BLANK]` to show students where to type.');
+                    const match = questionText.match(/\[(.*?)\]/);
+
+                    if (!match || !match[1] || match[1].trim() === '') {
+                        showAlert(`Error in Question ${questionNumber}: For fill-in-the-blank questions, you must provide an answer inside brackets [ ].`);
                         showLoading(false);
                         return;
                     }
-                    newQuestions.push({ type: 'fill_in_the_blank', question: questionText, answer });
+                    
+                    const answer = match[1].trim();
+                    const questionForStudent = questionText.replace(/\[(.*?)\]/, '[BLANK]');
+
+                    newQuestions.push({ type: 'fill_in_the_blank', question: questionForStudent, answer: answer });
                 }
             }
 
-            if (!formIsValid) {
-                 showAlert('Please fill out all fields for every question.');
-                 showLoading(false);
-                 return;
-            }
-
             const { error } = await supabase.from('quizzes').update({ questions: newQuestions }).eq('id', quizId);
-            if (error) showAlert(`Failed to save quiz: ${error.message}`);
-            else {
+            if (error) {
+                showAlert(`Failed to save quiz: ${error.message}`);
+            } else {
                 showAlert('Quiz saved successfully!', 'Success');
                 quizEditorModal.classList.add('hidden');
-                setupContentManagement();
+                await setupContentManagement();
             }
             showLoading(false);
         });
@@ -1303,4 +1310,5 @@
     </script>
 </body>
 </html>
+
 
