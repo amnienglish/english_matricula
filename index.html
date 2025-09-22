@@ -259,7 +259,7 @@
     <div id="quiz-editor-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-auto">
             <h3 class="text-xl font-bold mb-4">Edit Quiz</h3>
-            <form id="quiz-editor-form">
+            <form id="quiz-editor-form" novalidate>
                 <input type="hidden" id="quiz-id">
                 <div id="questions-container" class="space-y-6 mb-6 max-h-[60vh] overflow-y-auto pr-2">
                     <!-- JS will populate questions here -->
@@ -502,7 +502,8 @@
                 });
 
                 meetingsNav.innerHTML = meetings.map(m => {
-                    const isLocked = m.meeting_number > 1 && m.meeting_number > lastCompleted + 1;
+                    // UPDATED: A meeting is locked if lecturer locks it OR if the sequential rule applies.
+                    const isLocked = m.is_locked || (m.meeting_number > 1 && m.meeting_number > lastCompleted + 1);
                     const progressStatus = progress.find(p => p.meeting_number === m.meeting_number);
                     let statusIcon = '';
                     if (progressStatus?.assignment_completed) {
@@ -577,18 +578,15 @@
                         html += `<div id="quiz-container">`;
                         const questions = quiz.questions; 
                         questions.forEach((q, index) => {
-                            // NEW: Check question type
-                            const questionType = q.type || 'multiple_choice'; // Default to multiple choice for older questions
+                            const questionType = q.type || 'multiple_choice'; 
                             html += `<div class="mb-6" data-question-index="${index}" data-question-type="${questionType}">`;
                             if (questionType === 'fill_in_the_blank') {
-                                // Render fill-in-the-blank question
                                 const questionTextWithInput = q.question.replace(/\[BLANK\]/gi, `<input type="text" data-question-index="${index}" class="fill-in-blank-input inline-block w-48 p-1 border-b-2 border-gray-400 focus:border-blue-500 outline-none">`);
                                 html += `<div class="flex items-center gap-2">
                                             <p class="font-semibold">${index + 1}. ${questionTextWithInput}</p>
                                             <span class="correct-answer-text hidden text-green-600 font-bold"></span>
                                         </div>`;
                             } else {
-                                // Render multiple choice question (existing logic)
                                 html += `<p class="font-semibold">${index + 1}. ${q.question}</p>
                                         <div class="space-y-2 mt-2">
                                          ${q.options.map((opt, i) => `<button class="quiz-option block w-full text-left p-2 border rounded-md" data-option-index="${i}">${opt}</button>`).join('')}
@@ -711,7 +709,6 @@
                         return;
                     }
                     
-                    // Disable all inputs after submission
                     document.querySelectorAll('.quiz-option, .fill-in-blank-input').forEach(el => el.disabled = true);
                     submitQuizBtn.disabled = true;
 
@@ -804,7 +801,6 @@
             }
         };
         
-        // --- Student Management ---
         let allSubmissionsData = [];
         const loadAllSubmissions = async () => {
              try {
@@ -967,6 +963,7 @@
         const setupContentManagement = async () => {
             try {
                 showLoading(true);
+                // NOTE: Make sure your 'materials' table has an 'is_locked' boolean column.
                 const { data: materials, error: mError } = await supabase.from('materials').select('*').order('meeting_number');
                 if (mError) throw mError;
 
@@ -997,6 +994,9 @@
                     <div class="space-x-2">
                         <button data-id="${content.id}" class="edit-material-btn bg-yellow-500 text-white text-sm py-1 px-3 rounded hover:bg-yellow-600">Edit Material</button>
                         ${content.quiz ? `<button data-id="${content.id}" class="edit-quiz-btn bg-indigo-500 text-white text-sm py-1 px-3 rounded hover:bg-indigo-600">Edit Quiz</button>` : ''}
+                        <button data-id="${content.id}" data-locked="${content.is_locked}" class="toggle-lock-btn ${content.is_locked ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} text-white text-sm py-1 px-3 rounded">
+                            ${content.is_locked ? 'Unlock' : 'Lock'}
+                        </button>
                     </div>
                 </div>
             `).join('');
@@ -1010,6 +1010,29 @@
                 const content = allCourseContent.find(c => c.id == e.target.dataset.id);
                 openQuizEditor(content.quiz);
             }));
+
+            document.querySelectorAll('.toggle-lock-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                const button = e.target;
+                const materialId = button.dataset.id;
+                const isLocked = button.dataset.locked === 'true';
+                handleToggleLock(materialId, isLocked);
+            }));
+        };
+
+        const handleToggleLock = async (materialId, currentLockStatus) => {
+            showLoading(true);
+            const { error } = await supabase
+                .from('materials')
+                .update({ is_locked: !currentLockStatus })
+                .eq('id', materialId);
+            
+            if (error) {
+                showAlert(`Failed to update lock status: ${error.message}`);
+            } else {
+                showAlert(`Meeting status updated successfully!`, 'Success');
+                await setupContentManagement(); // Refresh the view
+            }
+            showLoading(false);
         };
 
         const openMaterialEditor = (material) => {
@@ -1036,7 +1059,7 @@
             else {
                 showAlert('Material saved successfully!', 'Success');
                 materialEditorModal.classList.add('hidden');
-                setupContentManagement(); // Refresh
+                setupContentManagement();
             }
             showLoading(false);
         });
@@ -1090,30 +1113,29 @@
             questionDiv.className = 'p-4 border rounded-lg bg-gray-50 relative';
             questionDiv.id = questionId;
 
-            // NEW: Determine the type, default to 'multiple_choice'
             const type = questionData.type || 'multiple_choice';
 
             const renderQuestionBody = (type, data) => {
                 if (type === 'fill_in_the_blank') {
                     return `
                         <div class="mt-2">
-                             <input type="text" class="question-text w-full p-2 border rounded" value="${data.question || ''}" placeholder="Question text, e.g., The capital of Indonesia is [BLANK]." required>
+                             <input type="text" class="question-text w-full p-2 border rounded" value="${data.question || ''}" placeholder="Question text, e.g., The capital of Indonesia is [BLANK].">
                         </div>
                         <div class="mt-2">
                             <label class="block text-sm font-medium text-gray-700">Correct Answer</label>
-                            <input type="text" class="correct-answer-text w-full p-2 border rounded" value="${data.answer || ''}" placeholder="e.g., Jakarta" required>
+                            <input type="text" class="correct-answer-text w-full p-2 border rounded" value="${data.answer || ''}" placeholder="e.g., Jakarta">
                         </div>
                     `;
                 } else { // multiple_choice
                     return `
                          <div class="mt-2">
-                             <input type="text" class="question-text w-full p-2 border rounded" value="${data.question || ''}" placeholder="Question text" required>
+                             <input type="text" class="question-text w-full p-2 border rounded" value="${data.question || ''}" placeholder="Question text">
                          </div>
                         <div class="grid grid-cols-2 gap-2 mt-2">
                             ${[0, 1, 2, 3].map(i => `
                                 <div class="flex items-center">
-                                    <input type="radio" name="answer-${questionId}" value="${i}" class="correct-answer-radio h-4 w-4" ${data.answer === i ? 'checked' : ''} required>
-                                    <input type="text" class="option-text ml-2 w-full p-2 border rounded" value="${(data.options && data.options[i]) || ''}" placeholder="Option ${i + 1}" required>
+                                    <input type="radio" name="answer-${questionId}" value="${i}" class="correct-answer-radio h-4 w-4" ${data.answer === i ? 'checked' : ''}>
+                                    <input type="text" class="option-text ml-2 w-full p-2 border rounded" value="${(data.options && data.options[i]) || ''}" placeholder="Option ${i + 1}">
                                 </div>
                             `).join('')}
                         </div>
@@ -1136,7 +1158,6 @@
             `;
             container.appendChild(questionDiv);
             
-            // Event Listeners for the new question element
             questionDiv.querySelector('.delete-question-btn').addEventListener('click', () => {
                 questionDiv.remove();
                 document.querySelectorAll('#questions-container > div').forEach((div, i) => {
@@ -1147,7 +1168,6 @@
             questionDiv.querySelector('.question-type-selector').addEventListener('change', (e) => {
                 const selectedType = e.target.value;
                 const bodyContainer = questionDiv.querySelector('.question-body');
-                // Pass an empty object for data when switching types to clear previous inputs
                 bodyContainer.innerHTML = renderQuestionBody(selectedType, {}); 
             });
         };
@@ -1283,3 +1303,4 @@
     </script>
 </body>
 </html>
+
