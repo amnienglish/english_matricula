@@ -125,6 +125,7 @@
                 <nav class="-mb-px flex space-x-6">
                     <button id="tab-students" class="tab-btn py-2 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Student Management</button>
                     <button id="tab-content" class="tab-btn py-2 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Content Management</button>
+                    <button id="tab-registered-students" class="tab-btn py-2 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Registered Students</button>
                 </nav>
             </div>
 
@@ -185,6 +186,27 @@
                     </div>
                  </div>
             </div>
+
+            <!-- Registered Students View -->
+            <div id="registered-students-view" class="hidden flex-grow overflow-y-auto">
+                 <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-xl font-bold mb-4">Registered Students List</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white">
+                            <thead class="bg-gray-200">
+                                <tr>
+                                    <th class="py-2 px-4 border-b text-left">Student Name</th>
+                                    <th class="py-2 px-4 border-b text-left">Email</th>
+                                </tr>
+                            </thead>
+                            <tbody id="registered-students-table">
+                                <!-- JS will populate this -->
+                            </tbody>
+                        </table>
+                    </div>
+                 </div>
+            </div>
+
         </div>
     </div>
 
@@ -242,6 +264,13 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700">Content</label>
                     <div id="material-editor-container" class="mt-1"></div>
+                </div>
+                <div class="mb-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="material-assignment-enabled" class="form-checkbox h-5 w-5 text-blue-600">
+                        <span class="ml-2 text-sm text-gray-700">Aktifkan Pengumpulan Tugas</span>
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1">Jika dinonaktifkan, tugas ini tidak akan menjadi syarat untuk membuka pertemuan berikutnya.</p>
                 </div>
                 <div class="mb-4">
                     <label for="material-assignment-instruction" class="block text-sm font-medium text-gray-700">Assignment Instruction</label>
@@ -495,18 +524,28 @@
                 if (progressError) throw progressError;
 
                 let lastCompleted = 0;
-                progress.forEach(p => {
-                    if (p.assignment_completed) {
-                        lastCompleted = Math.max(lastCompleted, p.meeting_number);
+                meetings.forEach(m => {
+                    const meetingProgress = progress.find(p => p.meeting_number === m.meeting_number);
+                    if (meetingProgress) {
+                        const isAssignmentDisabled = !m.assignment_enabled;
+                        const hasSubmittedAssignment = meetingProgress.assignment_completed;
+                        const hasAttended = meetingProgress.attended;
+                        
+                        // A meeting is "passed" if the assignment is disabled and they attended, OR the assignment is enabled and they submitted it.
+                        if ((isAssignmentDisabled && hasAttended) || hasSubmittedAssignment) {
+                            lastCompleted = Math.max(lastCompleted, m.meeting_number);
+                        }
                     }
                 });
 
                 meetingsNav.innerHTML = meetings.map(m => {
-                    // UPDATED: A meeting is locked if lecturer locks it OR if the sequential rule applies.
-                    const isLocked = m.is_locked || (m.meeting_number > 1 && m.meeting_number > lastCompleted + 1);
+                    const isLockedByLecturer = m.is_locked;
+                    const isLockedBySequence = (m.meeting_number > 1 && m.meeting_number > lastCompleted + 1);
+                    const isLocked = isLockedByLecturer || isLockedBySequence;
+
                     const progressStatus = progress.find(p => p.meeting_number === m.meeting_number);
                     let statusIcon = '';
-                    if (progressStatus?.assignment_completed) {
+                    if (progressStatus?.assignment_completed || (!m.assignment_enabled && progressStatus?.attended)) {
                         statusIcon = '<span class="text-green-400 ml-2">✔</span>';
                     } else if (progressStatus?.attended) {
                         statusIcon = '<span class="text-yellow-400 ml-2">●</span>';
@@ -600,19 +639,22 @@
                     html += `</div></div>`;
                 }
 
-                const { data: assignment } = await supabase.from('assignments').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
-                 html += `<div class="mt-8 p-4 border rounded-lg">
-                             <h3 class="text-xl font-bold mb-2">Assignment Submission</h3>`;
-                if(assignment) {
-                     html += `<p class="text-green-600 font-semibold">✔ You have submitted your assignment.</p>
-                             <p class="text-sm mt-2">File: <a href="${assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">${assignment.file_url.split('/').pop()}</a></p>
-                             ${assignment.grade ? `<p class="mt-2 font-semibold">Grade: ${assignment.grade}</p><p class="mt-1 italic">Feedback: ${assignment.feedback || 'No feedback provided.'}</p>` : '<p class="mt-2 text-gray-600">Waiting for grade.</p>'}`;
-                } else {
-                    html += `<p class="mb-2">${meeting.assignment_instruction || 'Upload your assignment file here.'}</p>
-                             <input type="file" id="assignment-file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                             <button id="upload-assignment-btn" data-meeting-number="${meeting.meeting_number}" class="mt-4 bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-600">Upload Assignment</button>`;
+                // Only show assignment section if it's enabled for the meeting
+                if (meeting.assignment_enabled) {
+                    const { data: assignment } = await supabase.from('assignments').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
+                    html += `<div class="mt-8 p-4 border rounded-lg">
+                                <h3 class="text-xl font-bold mb-2">Assignment Submission</h3>`;
+                    if(assignment) {
+                        html += `<p class="text-green-600 font-semibold">✔ You have submitted your assignment.</p>
+                                <p class="text-sm mt-2">File: <a href="${assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">${assignment.file_url.split('/').pop()}</a></p>
+                                ${assignment.grade ? `<p class="mt-2 font-semibold">Grade: ${assignment.grade}</p><p class="mt-1 italic">Feedback: ${assignment.feedback || 'No feedback provided.'}</p>` : '<p class="mt-2 text-gray-600">Waiting for grade.</p>'}`;
+                    } else {
+                        html += `<p class="mb-2">${meeting.assignment_instruction || 'Upload your assignment file here.'}</p>
+                                <input type="file" id="assignment-file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                <button id="upload-assignment-btn" data-meeting-number="${meeting.meeting_number}" data-material-id="${meeting.id}" class="mt-4 bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-600">Upload Assignment</button>`;
+                    }
+                    html += `</div>`;
                 }
-                 html += `</div>`;
 
                 contentBody.innerHTML = html;
                 addMeetingEventListeners();
@@ -724,6 +766,7 @@
             if(uploadBtn) {
                  uploadBtn.addEventListener('click', async () => {
                     const meetingNumber = uploadBtn.dataset.meetingNumber;
+                    const materialId = uploadBtn.dataset.materialId;
                     const fileInput = document.getElementById('assignment-file');
                     const file = fileInput.files[0];
 
@@ -745,8 +788,7 @@
                      if (progressError) showAlert(progressError.message);
                     
                     showAlert('Assignment uploaded successfully!', 'Success');
-                    const {data} = await supabase.from('materials').select('id').eq('meeting_number', meetingNumber).single();
-                    loadMeetingContent(data.id);
+                    loadMeetingContent(materialId);
                     refreshStudentNav();
                     showLoading(false);
                  });
@@ -769,9 +811,11 @@
             document.getElementById('lecturer-logout-btn').addEventListener('click', handleLogout);
             document.getElementById('tab-students').addEventListener('click', () => switchLecturerTab('students'));
             document.getElementById('tab-content').addEventListener('click', () => switchLecturerTab('content'));
+            document.getElementById('tab-registered-students').addEventListener('click', () => switchLecturerTab('registered-students'));
             
             await loadAllSubmissions();
             await setupContentManagement();
+            await loadRegisteredStudents();
             
             const filter = document.getElementById('meeting-filter');
             filter.innerHTML = '<option value="all">All Meetings</option>';
@@ -783,21 +827,25 @@
         };
 
         const switchLecturerTab = (tabName) => {
-            const studentView = document.getElementById('student-management-view');
-            const contentView = document.getElementById('content-management-view');
-            const studentTab = document.getElementById('tab-students');
-            const contentTab = document.getElementById('tab-content');
+            const views = {
+                'students': document.getElementById('student-management-view'),
+                'content': document.getElementById('content-management-view'),
+                'registered-students': document.getElementById('registered-students-view')
+            };
+            const tabs = {
+                'students': document.getElementById('tab-students'),
+                'content': document.getElementById('tab-content'),
+                'registered-students': document.getElementById('tab-registered-students')
+            };
 
-            if (tabName === 'students') {
-                studentView.classList.remove('hidden');
-                contentView.classList.add('hidden');
-                studentTab.classList.add('active');
-                contentTab.classList.remove('active');
-            } else {
-                studentView.classList.add('hidden');
-                contentView.classList.remove('hidden');
-                studentTab.classList.remove('active');
-                contentTab.classList.add('active');
+            for (const key in views) {
+                if(views[key]) views[key].classList.add('hidden');
+                if(tabs[key]) tabs[key].classList.remove('active');
+            }
+
+            if (views[tabName]) {
+                views[tabName].classList.remove('hidden');
+                tabs[tabName].classList.add('active');
             }
         };
         
@@ -928,8 +976,9 @@
             const feedback = document.getElementById('grade-feedback').value;
 
             const { error } = await supabase.from('assignments').update({ grade: score, feedback: feedback }).eq('id', assignmentId);
-            if(error) showAlert(`Failed to save grade: ${error.message}`);
-            else {
+            if(error) {
+                showAlert(`Failed to save grade: ${error.message}`);
+            } else {
                 showAlert('Grade saved successfully!', 'Success');
                 gradingModal.classList.add('hidden');
                 loadAllSubmissions();
@@ -959,11 +1008,37 @@
 
         cancelGradeBtn.addEventListener('click', () => gradingModal.classList.add('hidden'));
 
+        // --- Registered Students ---
+        const loadRegisteredStudents = async () => {
+            try {
+                const { data: students, error } = await supabase.from('profiles').select('full_name, email').order('full_name', { ascending: true });
+                if (error) throw error;
+                renderRegisteredStudents(students);
+            } catch (error) {
+                console.error("Error loading registered students:", error);
+                document.getElementById('registered-students-table').innerHTML = `<tr><td colspan="2" class="text-center p-4 text-red-500">Error loading student list.</td></tr>`;
+            }
+        };
+
+        const renderRegisteredStudents = (students) => {
+            const tableBody = document.getElementById('registered-students-table');
+            if (!students || students.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-500">No students have registered yet.</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = students.map(student => `
+                <tr class="hover:bg-gray-50">
+                    <td class="py-2 px-4 border-b">${student.full_name}</td>
+                    <td class="py-2 px-4 border-b">${student.email}</td>
+                </tr>
+            `).join('');
+        };
+
         // --- Content Management ---
         const setupContentManagement = async () => {
             try {
                 showLoading(true);
-                // NOTE: Make sure your 'materials' table has an 'is_locked' boolean column.
                 const { data: materials, error: mError } = await supabase.from('materials').select('*').order('meeting_number');
                 if (mError) throw mError;
 
@@ -1039,6 +1114,8 @@
             document.getElementById('material-id').value = material.id;
             document.getElementById('material-title').value = material.title;
             document.getElementById('material-assignment-instruction').value = material.assignment_instruction || '';
+            document.getElementById('material-assignment-enabled').checked = material.assignment_enabled;
+
             
             if (quillEditor) {
                 quillEditor.root.innerHTML = material.content;
@@ -1053,7 +1130,14 @@
             const title = document.getElementById('material-title').value;
             const content = quillEditor.root.innerHTML;
             const assignment_instruction = document.getElementById('material-assignment-instruction').value;
-            const { error } = await supabase.from('materials').update({ title, content, assignment_instruction }).eq('id', id);
+            const assignment_enabled = document.getElementById('material-assignment-enabled').checked;
+
+            const { error } = await supabase.from('materials').update({ 
+                title, 
+                content, 
+                assignment_instruction,
+                assignment_enabled
+            }).eq('id', id);
             
             if (error) showAlert(`Failed to save material: ${error.message}`);
             else {
@@ -1310,5 +1394,4 @@
     </script>
 </body>
 </html>
-
 
