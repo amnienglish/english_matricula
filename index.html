@@ -13,8 +13,8 @@
         .locked { opacity: 0.5; pointer-events: none; }
         .modal { transition: opacity 0.3s ease; }
         .quiz-option.selected { background-color: #3b82f6; color: white; }
-        .quiz-option.correct { background-color: #22c55e; color: white; }
-        .quiz-option.incorrect { background-color: #ef4444; color: white; }
+        .quiz-option.correct, .correct-input { background-color: #22c55e; color: white; border-color: #16a34a; }
+        .quiz-option.incorrect, .incorrect-input { background-color: #ef4444; color: white; border-color: #dc2626; }
         .tab-btn.active { border-color: #3b82f6; color: #3b82f6; background-color: #eff6ff; }
         #material-editor-container { height: 400px; }
     </style>
@@ -298,7 +298,7 @@
         const studentDashboard = document.getElementById('student-dashboard'), lecturerDashboard = document.getElementById('lecturer-dashboard');
         
         // Modals
-        const alertModal = document.getElementById('alert-modal'), alertTitle = document.getElementById('alert-title'), alertMessage = document.getElementById('alert-message'), alertOkBtn = document.getElementById('alert-ok-btn');
+        const alertModal = document.getElementById('alert-modal'), alertTitleEl = document.getElementById('alert-title'), alertMessage = document.getElementById('alert-message'), alertOkBtn = document.getElementById('alert-ok-btn');
         const confirmModal = document.getElementById('confirm-modal'), confirmTitle = document.getElementById('confirm-title'), confirmMessage = document.getElementById('confirm-message'), confirmCancelBtn = document.getElementById('confirm-cancel-btn'), confirmOkBtn = document.getElementById('confirm-ok-btn');
         const gradingModal = document.getElementById('grading-modal'), gradingForm = document.getElementById('grading-form'), cancelGradeBtn = document.getElementById('cancel-grade-btn');
         const materialEditorModal = document.getElementById('material-editor-modal'), materialEditorForm = document.getElementById('material-editor-form'), cancelMaterialBtn = document.getElementById('cancel-material-btn');
@@ -315,7 +315,7 @@
         const showLoading = (isLoading) => isLoading ? loadingSpinner.classList.remove('hidden') : loadingSpinner.classList.add('hidden');
         
         const showAlert = (message, title = "Alert") => {
-            alertTitle.textContent = title;
+            alertTitleEl.textContent = title;
             alertMessage.textContent = message;
             alertModal.classList.remove('hidden');
         };
@@ -553,7 +553,7 @@
                 
                 let html = '';
 
-                // Attendance section (moved to top)
+                // Attendance section
                 html += `<div class="mb-6 p-4 border rounded-lg bg-gray-50">
                             <h3 class="text-xl font-bold mb-2">Attendance</h3>
                             ${progress?.attended 
@@ -564,7 +564,7 @@
 
                 // Material content
                 html += `<div class="ql-snow"><div class="ql-editor">${meeting.content}</div></div>`;
-                         
+                          
                 const { data: quiz, error: quizError } = await supabase.from('quizzes').select('*').eq('material_id', meetingId).single();
                 if (quiz && !quizError) {
                      const { data: quizSubmission } = await supabase.from('quiz_submissions').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
@@ -577,26 +577,38 @@
                         html += `<div id="quiz-container">`;
                         const questions = quiz.questions; 
                         questions.forEach((q, index) => {
-                            html += `<div class="mb-4">
-                                       <p class="font-semibold">${index + 1}. ${q.question}</p>
-                                       <div class="space-y-2 mt-2" data-question-index="${index}">
+                            // NEW: Check question type
+                            const questionType = q.type || 'multiple_choice'; // Default to multiple choice for older questions
+                            html += `<div class="mb-6" data-question-index="${index}" data-question-type="${questionType}">`;
+                            if (questionType === 'fill_in_the_blank') {
+                                // Render fill-in-the-blank question
+                                const questionTextWithInput = q.question.replace(/\[BLANK\]/gi, `<input type="text" data-question-index="${index}" class="fill-in-blank-input inline-block w-48 p-1 border-b-2 border-gray-400 focus:border-blue-500 outline-none">`);
+                                html += `<div class="flex items-center gap-2">
+                                            <p class="font-semibold">${index + 1}. ${questionTextWithInput}</p>
+                                            <span class="correct-answer-text hidden text-green-600 font-bold"></span>
+                                        </div>`;
+                            } else {
+                                // Render multiple choice question (existing logic)
+                                html += `<p class="font-semibold">${index + 1}. ${q.question}</p>
+                                        <div class="space-y-2 mt-2">
                                          ${q.options.map((opt, i) => `<button class="quiz-option block w-full text-left p-2 border rounded-md" data-option-index="${i}">${opt}</button>`).join('')}
-                                       </div>
-                                     </div>`;
+                                        </div>`;
+                            }
+                            html += `</div>`;
                         });
                         html += `<button id="submit-quiz-btn" data-quiz-id="${quiz.id}" data-meeting-number="${meeting.meeting_number}" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">Submit Quiz</button>
                                  <p id="quiz-result" class="mt-4 font-bold"></p>`;
                     }
-                    html += `</div>`;
+                    html += `</div></div>`;
                 }
 
                 const { data: assignment } = await supabase.from('assignments').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
                  html += `<div class="mt-8 p-4 border rounded-lg">
-                            <h3 class="text-xl font-bold mb-2">Assignment Submission</h3>`;
+                             <h3 class="text-xl font-bold mb-2">Assignment Submission</h3>`;
                 if(assignment) {
                      html += `<p class="text-green-600 font-semibold">✔ You have submitted your assignment.</p>
-                              <p class="text-sm mt-2">File: <a href="${assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">${assignment.file_url.split('/').pop()}</a></p>
-                              ${assignment.grade ? `<p class="mt-2 font-semibold">Grade: ${assignment.grade}</p><p class="mt-1 italic">Feedback: ${assignment.feedback || 'No feedback provided.'}</p>` : '<p class="mt-2 text-gray-600">Waiting for grade.</p>'}`;
+                             <p class="text-sm mt-2">File: <a href="${assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">${assignment.file_url.split('/').pop()}</a></p>
+                             ${assignment.grade ? `<p class="mt-2 font-semibold">Grade: ${assignment.grade}</p><p class="mt-1 italic">Feedback: ${assignment.feedback || 'No feedback provided.'}</p>` : '<p class="mt-2 text-gray-600">Waiting for grade.</p>'}`;
                 } else {
                     html += `<p class="mb-2">${meeting.assignment_instruction || 'Upload your assignment file here.'}</p>
                              <input type="file" id="assignment-file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
@@ -645,33 +657,62 @@
                 submitQuizBtn.addEventListener('click', async () => {
                     const { quizId, meetingNumber } = submitQuizBtn.dataset;
                     const { data: quiz } = await supabase.from('quizzes').select('questions').eq('id', quizId).single();
+                    if (!quiz) {
+                        showAlert("Error: Could not retrieve quiz data.");
+                        return;
+                    }
                     const questions = quiz.questions;
                     
                     let score = 0;
-                    let answeredCount = 0;
+                    let allAnswered = true;
                     
                     questions.forEach((q, index) => {
-                         const container = document.querySelector(`[data-question-index="${index}"]`);
-                         const selectedOption = container.querySelector('.quiz-option.selected');
-                         if(selectedOption) {
-                             answeredCount++;
-                             const selectedIndex = parseInt(selectedOption.dataset.optionIndex);
-                             if (selectedIndex === q.answer) {
-                                 score++;
-                                 selectedOption.classList.add('correct');
-                             } else {
-                                 selectedOption.classList.add('incorrect');
-                                 container.querySelector(`[data-option-index="${q.answer}"]`).classList.add('correct');
-                             }
-                         }
+                        const questionType = q.type || 'multiple_choice';
+                        const container = document.querySelector(`div[data-question-index="${index}"]`);
+                        
+                        if (questionType === 'fill_in_the_blank') {
+                            const input = container.querySelector(`input[type="text"]`);
+                            const userAnswer = input.value.trim();
+                            if (!userAnswer) allAnswered = false;
+
+                            const correctAnswer = q.answer.trim();
+                            if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
+                                score++;
+                                input.classList.add('correct-input');
+                            } else {
+                                input.classList.add('incorrect-input');
+                                const correctAnswerEl = container.querySelector('.correct-answer-text');
+                                if (correctAnswerEl) {
+                                    correctAnswerEl.textContent = `(Correct: ${correctAnswer})`;
+                                    correctAnswerEl.classList.remove('hidden');
+                                }
+                            }
+
+                        } else { // multiple_choice
+                            const selectedOption = container.querySelector('.quiz-option.selected');
+                            if (!selectedOption) {
+                                allAnswered = false;
+                            } else {
+                                const selectedIndex = parseInt(selectedOption.dataset.optionIndex);
+                                if (selectedIndex === q.answer) {
+                                    score++;
+                                    selectedOption.classList.add('correct');
+                                } else {
+                                    selectedOption.classList.add('incorrect');
+                                    const correctButton = container.querySelector(`[data-option-index="${q.answer}"]`);
+                                    if (correctButton) correctButton.classList.add('correct');
+                                }
+                            }
+                        }
                     });
 
-                    if (answeredCount !== questions.length) {
+                    if (!allAnswered) {
                         showAlert('Please answer all questions before submitting.');
                         return;
                     }
                     
-                    document.querySelectorAll('.quiz-option').forEach(b => b.disabled = true);
+                    // Disable all inputs after submission
+                    document.querySelectorAll('.quiz-option, .fill-in-blank-input').forEach(el => el.disabled = true);
                     submitQuizBtn.disabled = true;
 
                     document.getElementById('quiz-result').textContent = `You scored ${score} out of ${questions.length}.`;
@@ -1044,29 +1085,70 @@
         
         const addQuestionToForm = (questionData = {}, index) => {
             const container = document.getElementById('questions-container');
-            const questionId = `q-${index}`;
+            const questionId = `q-${Date.now()}-${index}`;
             const questionDiv = document.createElement('div');
             questionDiv.className = 'p-4 border rounded-lg bg-gray-50 relative';
             questionDiv.id = questionId;
+
+            // NEW: Determine the type, default to 'multiple_choice'
+            const type = questionData.type || 'multiple_choice';
+
+            const renderQuestionBody = (type, data) => {
+                if (type === 'fill_in_the_blank') {
+                    return `
+                        <div class="mt-2">
+                             <input type="text" class="question-text w-full p-2 border rounded" value="${data.question || ''}" placeholder="Question text, e.g., The capital of Indonesia is [BLANK]." required>
+                        </div>
+                        <div class="mt-2">
+                            <label class="block text-sm font-medium text-gray-700">Correct Answer</label>
+                            <input type="text" class="correct-answer-text w-full p-2 border rounded" value="${data.answer || ''}" placeholder="e.g., Jakarta" required>
+                        </div>
+                    `;
+                } else { // multiple_choice
+                    return `
+                         <div class="mt-2">
+                             <input type="text" class="question-text w-full p-2 border rounded" value="${data.question || ''}" placeholder="Question text" required>
+                         </div>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            ${[0, 1, 2, 3].map(i => `
+                                <div class="flex items-center">
+                                    <input type="radio" name="answer-${questionId}" value="${i}" class="correct-answer-radio h-4 w-4" ${data.answer === i ? 'checked' : ''} required>
+                                    <input type="text" class="option-text ml-2 w-full p-2 border rounded" value="${(data.options && data.options[i]) || ''}" placeholder="Option ${i + 1}" required>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            };
+            
             questionDiv.innerHTML = `
                 <button type="button" class="delete-question-btn absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold text-lg">&times;</button>
-                <label class="block text-sm font-bold text-gray-700 mb-2">Question ${index + 1}</label>
-                <input type="text" class="question-text w-full p-2 border rounded mb-2" value="${questionData.question || ''}" placeholder="Question text" required>
-                <div class="grid grid-cols-2 gap-2">
-                    ${[0, 1, 2, 3].map(i => `
-                        <div class="flex items-center">
-                            <input type="radio" name="answer-${questionId}" value="${i}" class="correct-answer h-4 w-4" ${questionData.answer === i ? 'checked' : ''} required>
-                            <input type="text" class="option-text ml-2 w-full p-2 border rounded" value="${(questionData.options && questionData.options[i]) || ''}" placeholder="Option ${i + 1}" required>
-                        </div>
-                    `).join('')}
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-sm font-bold text-gray-700">Question ${index + 1}</label>
+                    <select class="question-type-selector text-sm p-1 border rounded">
+                        <option value="multiple_choice" ${type === 'multiple_choice' ? 'selected' : ''}>Multiple Choice</option>
+                        <option value="fill_in_the_blank" ${type === 'fill_in_the_blank' ? 'selected' : ''}>Fill in the Blank</option>
+                    </select>
+                </div>
+                <div class="question-body">
+                    ${renderQuestionBody(type, questionData)}
                 </div>
             `;
             container.appendChild(questionDiv);
+            
+            // Event Listeners for the new question element
             questionDiv.querySelector('.delete-question-btn').addEventListener('click', () => {
                 questionDiv.remove();
                 document.querySelectorAll('#questions-container > div').forEach((div, i) => {
                     div.querySelector('label').textContent = `Question ${i + 1}`;
                 });
+            });
+
+            questionDiv.querySelector('.question-type-selector').addEventListener('change', (e) => {
+                const selectedType = e.target.value;
+                const bodyContainer = questionDiv.querySelector('.question-body');
+                // Pass an empty object for data when switching types to clear previous inputs
+                bodyContainer.innerHTML = renderQuestionBody(selectedType, {}); 
             });
         };
 
@@ -1082,18 +1164,45 @@
             const newQuestions = [];
             const questionDivs = document.querySelectorAll('#questions-container > div');
             
+            let formIsValid = true;
             for (const div of questionDivs) {
-                const questionText = div.querySelector('.question-text').value;
-                const options = Array.from(div.querySelectorAll('.option-text')).map(opt => opt.value);
-                const answerRadio = div.querySelector('.correct-answer:checked');
-                
-                if (!questionText || options.some(o => !o) || !answerRadio) {
-                    showAlert('Please fill out all fields for every question.');
-                    showLoading(false);
-                    return;
+                const type = div.querySelector('.question-type-selector').value;
+                const questionText = div.querySelector('.question-text').value.trim();
+
+                if (!questionText) {
+                    formIsValid = false;
+                    break;
                 }
-                const answer = parseInt(answerRadio.value);
-                newQuestions.push({ question: questionText, options, answer });
+
+                if (type === 'multiple_choice') {
+                    const options = Array.from(div.querySelectorAll('.option-text')).map(opt => opt.value.trim());
+                    const answerRadio = div.querySelector('.correct-answer-radio:checked');
+                    
+                    if (options.some(o => !o) || !answerRadio) {
+                        formIsValid = false;
+                        break;
+                    }
+                    const answer = parseInt(answerRadio.value);
+                    newQuestions.push({ type: 'multiple_choice', question: questionText, options, answer });
+                } else { // fill_in_the_blank
+                    const answer = div.querySelector('.correct-answer-text').value.trim();
+                    if (!answer) {
+                        formIsValid = false;
+                        break;
+                    }
+                    if (!questionText.toLowerCase().includes('[blank]')) {
+                        showAlert('For Fill in the Blank questions, the question text must include `[BLANK]` to show students where to type.');
+                        showLoading(false);
+                        return;
+                    }
+                    newQuestions.push({ type: 'fill_in_the_blank', question: questionText, answer });
+                }
+            }
+
+            if (!formIsValid) {
+                 showAlert('Please fill out all fields for every question.');
+                 showLoading(false);
+                 return;
             }
 
             const { error } = await supabase.from('quizzes').update({ questions: newQuestions }).eq('id', quizId);
@@ -1174,4 +1283,3 @@
     </script>
 </body>
 </html>
-
