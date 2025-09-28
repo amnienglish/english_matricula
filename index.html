@@ -68,6 +68,32 @@
         </div>
     </div>
 
+    <!-- ===== [BARU] FORM RESET PASSWORD ===== -->
+    <div id="reset-password-container" class="hidden flex items-center justify-center min-h-screen bg-cover bg-center" style="background-image: url('https://blogger.googleusercontent.com/img/a/AVvXsEi8R2GgQbwNbFxIaqnLliEJ-G5WaBQXtA9094A1bPRlsImcjObWj_pUg8AJawHwlUxr6UqcmEprm65H175w9fi3Xk9HCiaTyPLRyO_-Jr2_Vl3qCyG1Fgi4fFNFNIdnq4T98AfvtApLxLU7oIn8EC_D7hWvjboyXn7c2cfIl_E61aYwQ6VwiO4DMg02YdS3');">
+        <div class="w-full max-w-md">
+            <div class="bg-white/20 backdrop-blur-md p-8 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Create New Password</h2>
+                <p class="text-center text-gray-700 mb-4">You are updating the password for: <strong id="reset-email"></strong></p>
+                <form id="reset-password-form" novalidate>
+                    <div class="mb-4">
+                        <label for="reset-password" class="block text-gray-700 text-sm font-bold mb-2">New Password</label>
+                        <input type="password" id="reset-password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required minlength="6">
+                    </div>
+                    <div class="mb-6">
+                        <label for="confirm-reset-password" class="block text-gray-700 text-sm font-bold mb-2">Confirm New Password</label>
+                        <input type="password" id="confirm-reset-password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" required>
+                    </div>
+                    <div class="flex items-center justify-center">
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Save New Password</button>
+                    </div>
+                </form>
+                <p id="reset-error" class="text-red-500 text-xs italic mt-4 text-center"></p>
+            </div>
+        </div>
+    </div>
+    <!-- ===== AKHIR DARI BAGIAN BARU ===== -->
+
+
     <!-- Main App Container -->
     <div id="main-container" class="hidden w-full h-screen p-4">
         <!-- Student Dashboard -->
@@ -197,6 +223,7 @@
                                 <tr>
                                     <th class="py-2 px-4 border-b text-left">Student Name</th>
                                     <th class="py-2 px-4 border-b text-left">Email</th>
+                                    <th class="py-2 px-4 border-b text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="registered-students-table">
@@ -250,8 +277,6 @@
             </form>
         </div>
     </div>
-    
-    <!-- Material Editor Modal -->
     <div id="material-editor-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-auto">
             <h3 class="text-xl font-bold mb-4">Edit Material</h3>
@@ -283,8 +308,6 @@
             </form>
         </div>
     </div>
-
-    <!-- Quiz Editor Modal -->
     <div id="quiz-editor-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4">
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-auto">
             <h3 class="text-xl font-bold mb-4">Edit Quiz</h3>
@@ -325,6 +348,12 @@
         const authContainer = document.getElementById('auth-container');
         const loginForm = document.getElementById('login-form'), registerForm = document.getElementById('register-form'), authError = document.getElementById('auth-error'), showRegisterLink = document.getElementById('show-register-link'), showLoginLink = document.getElementById('show-login-link'), authTitle = document.getElementById('auth-title');
         const studentDashboard = document.getElementById('student-dashboard'), lecturerDashboard = document.getElementById('lecturer-dashboard');
+        
+        // ===== [BARU] Elemen untuk Reset Password =====
+        const resetPasswordContainer = document.getElementById('reset-password-container');
+        const resetPasswordForm = document.getElementById('reset-password-form');
+        const resetError = document.getElementById('reset-error');
+        const resetEmailEl = document.getElementById('reset-email');
         
         // Modals
         const alertModal = document.getElementById('alert-modal'), alertTitleEl = document.getElementById('alert-title'), alertMessage = document.getElementById('alert-message'), alertOkBtn = document.getElementById('alert-ok-btn');
@@ -372,8 +401,10 @@
             mainContainer.classList.add('hidden');
             studentDashboard.classList.add('hidden');
             lecturerDashboard.classList.add('hidden');
+            resetPasswordContainer.classList.add('hidden');
 
             if (page === 'auth') authContainer.classList.remove('hidden');
+            else if (page === 'reset-password') resetPasswordContainer.classList.remove('hidden');
             else if (page === 'student' || page === 'lecturer') {
                 mainContainer.classList.remove('hidden');
                 document.getElementById(`${page}-dashboard`).classList.remove('hidden');
@@ -531,7 +562,6 @@
                         const hasSubmittedAssignment = meetingProgress.assignment_completed;
                         const hasAttended = meetingProgress.attended;
                         
-                        // A meeting is "passed" if the assignment is disabled and they attended, OR the assignment is enabled and they submitted it.
                         if ((isAssignmentDisabled && hasAttended) || hasSubmittedAssignment) {
                             lastCompleted = Math.max(lastCompleted, m.meeting_number);
                         }
@@ -592,22 +622,19 @@
                 meetingImage.src = meeting.image_url || `https://placehold.co/800x300/e2e8f0/adb5bd?text=Meeting+${meeting.meeting_number}`;
                 
                 let html = '';
-
-                // Attendance section
                 html += `<div class="mb-6 p-4 border rounded-lg bg-gray-50">
                             <h3 class="text-xl font-bold mb-2">Attendance</h3>
                             ${progress?.attended 
                                 ? '<p class="text-green-600 font-semibold">✔ You have marked your attendance for this meeting.</p>'
                                 : `<p class="mb-2">Click the button below to mark your attendance.</p><button id="attend-btn" data-meeting-number="${meeting.meeting_number}" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">Mark Attendance</button>`
                             }
-                         </div>`;
+                        </div>`;
 
-                // Material content
                 html += `<div class="ql-snow"><div class="ql-editor">${meeting.content}</div></div>`;
-                          
+                                
                 const { data: quiz, error: quizError } = await supabase.from('quizzes').select('*').eq('material_id', meetingId).single();
                 if (quiz && !quizError) {
-                     const { data: quizSubmission } = await supabase.from('quiz_submissions').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
+                    const { data: quizSubmission } = await supabase.from('quiz_submissions').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
 
                     html += `<div class="mt-8 p-4 border rounded-lg">
                                 <h3 class="text-xl font-bold mb-2">Quiz</h3>`;
@@ -628,18 +655,17 @@
                             } else {
                                 html += `<p class="font-semibold">${index + 1}. ${q.question}</p>
                                         <div class="space-y-2 mt-2">
-                                         ${q.options.map((opt, i) => `<button class="quiz-option block w-full text-left p-2 border rounded-md" data-option-index="${i}">${opt}</button>`).join('')}
+                                            ${q.options.map((opt, i) => `<button class="quiz-option block w-full text-left p-2 border rounded-md" data-option-index="${i}">${opt}</button>`).join('')}
                                         </div>`;
                             }
                             html += `</div>`;
                         });
                         html += `<button id="submit-quiz-btn" data-quiz-id="${quiz.id}" data-meeting-number="${meeting.meeting_number}" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">Submit Quiz</button>
-                                 <p id="quiz-result" class="mt-4 font-bold"></p>`;
+                                <p id="quiz-result" class="mt-4 font-bold"></p>`;
                     }
                     html += `</div></div>`;
                 }
 
-                // Only show assignment section if it's enabled for the meeting
                 if (meeting.assignment_enabled) {
                     const { data: assignment } = await supabase.from('assignments').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
                     html += `<div class="mt-8 p-4 border rounded-lg">
@@ -757,14 +783,14 @@
                     document.getElementById('quiz-result').textContent = `You scored ${score} out of ${questions.length}.`;
                     
                     const { error } = await supabase.from('quiz_submissions').insert({ user_id: currentUser.id, meeting_number: meetingNumber, score, total_questions: questions.length });
-                     if (error) showAlert(error.message);
-                     await displayStudentTotalScore();
+                    if (error) showAlert(error.message);
+                    await displayStudentTotalScore();
                 });
             }
 
             const uploadBtn = document.getElementById('upload-assignment-btn');
             if(uploadBtn) {
-                 uploadBtn.addEventListener('click', async () => {
+                uploadBtn.addEventListener('click', async () => {
                     const meetingNumber = uploadBtn.dataset.meetingNumber;
                     const materialId = uploadBtn.dataset.materialId;
                     const fileInput = document.getElementById('assignment-file');
@@ -784,14 +810,14 @@
 
                     if (dbError) { showAlert(`Failed to save submission: ${dbError.message}`); showLoading(false); return; }
                     
-                     const { error: progressError } = await supabase.from('student_progress').upsert({ user_id: currentUser.id, meeting_number: meetingNumber, assignment_completed: true, attended: true }, { onConflict: 'user_id, meeting_number' });
-                     if (progressError) showAlert(progressError.message);
+                    const { error: progressError } = await supabase.from('student_progress').upsert({ user_id: currentUser.id, meeting_number: meetingNumber, assignment_completed: true, attended: true }, { onConflict: 'user_id, meeting_number' });
+                    if (progressError) showAlert(progressError.message);
                     
                     showAlert('Assignment uploaded successfully!', 'Success');
                     loadMeetingContent(materialId);
                     refreshStudentNav();
                     showLoading(false);
-                 });
+                });
             }
         };
 
@@ -852,15 +878,15 @@
         let allSubmissionsData = [];
         const loadAllSubmissions = async () => {
              try {
-                showLoading(true);
+                 showLoading(true);
                  let { data, error } = await supabase.from('profiles').select(`id, full_name, email, assignments ( * ), quiz_submissions ( * )`);
-                if (error) throw error;
-                allSubmissionsData = data;
-                renderSubmissions();
-                renderSummaryTable();
+                 if (error) throw error;
+                 allSubmissionsData = data;
+                 renderSubmissions();
+                 renderSummaryTable();
              } catch(error) {
-                console.error("Error loading submissions:", error);
-                showAlert(`Failed to load student data: ${error.message}`);
+                 console.error("Error loading submissions:", error);
+                 showAlert(`Failed to load student data: ${error.message}`);
              } finally { showLoading(false); }
         };
 
@@ -896,8 +922,8 @@
         };
         
         const renderSubmissions = (filter = 'all') => {
-             const tableBody = document.getElementById('student-submissions-table');
-             let html = '';
+              const tableBody = document.getElementById('student-submissions-table');
+              let html = '';
             const studentsWithActivity = allSubmissionsData.filter(s => s.assignments.length > 0 || s.quiz_submissions.length > 0);
 
             if (studentsWithActivity.length === 0) {
@@ -937,8 +963,8 @@
                 }
             });
 
-             tableBody.innerHTML = html || '<tr><td colspan="6" class="text-center p-4 text-gray-500">No submissions for this filter.</td></tr>';
-             addLecturerEventListeners();
+              tableBody.innerHTML = html || '<tr><td colspan="6" class="text-center p-4 text-gray-500">No submissions for this filter.</td></tr>';
+              addLecturerEventListeners();
         };
         
         const addLecturerEventListeners = () => {
@@ -961,11 +987,11 @@
         };
 
         const openGradingModal = (assignment) => {
-             gradingForm.reset();
-             document.getElementById('assignment-id').value = assignment.id;
-             document.getElementById('grade-score').value = assignment.grade || '';
-             document.getElementById('grade-feedback').value = assignment.feedback || '';
-             gradingModal.classList.remove('hidden');
+              gradingForm.reset();
+              document.getElementById('assignment-id').value = assignment.id;
+              document.getElementById('grade-score').value = assignment.grade || '';
+              document.getElementById('grade-feedback').value = assignment.feedback || '';
+              gradingModal.classList.remove('hidden');
         };
 
         gradingForm.addEventListener('submit', async (e) => {
@@ -987,23 +1013,23 @@
         });
 
         const handleReset = async (userId, meetingNumber) => {
-             showLoading(true);
-             try {
-                const student = allSubmissionsData.find(s => s.id === userId);
-                const assignment = student?.assignments.find(a => a.meeting_number == meetingNumber);
-                if (assignment) {
-                    const filePath = `${userId}/${assignment.file_url.split('/').pop()}`;
-                    await supabase.storage.from('assignments').remove([filePath]);
-                }
-                 await supabase.from('assignments').delete().match({ user_id: userId, meeting_number: meetingNumber });
-                 await supabase.from('quiz_submissions').delete().match({ user_id: userId, meeting_number: meetingNumber });
-                 await supabase.from('student_progress').delete().match({ user_id: userId, meeting_number: meetingNumber });
-                 
-                 showAlert('Student progress has been reset.', 'Success');
-                 loadAllSubmissions();
-             } catch(error) {
-                showAlert(`Failed to reset progress: ${error.message}`);
-             } finally { showLoading(false); }
+              showLoading(true);
+              try {
+                  const student = allSubmissionsData.find(s => s.id === userId);
+                  const assignment = student?.assignments.find(a => a.meeting_number == meetingNumber);
+                  if (assignment) {
+                      const filePath = `${userId}/${assignment.file_url.split('/').pop()}`;
+                      await supabase.storage.from('assignments').remove([filePath]);
+                  }
+                   await supabase.from('assignments').delete().match({ user_id: userId, meeting_number: meetingNumber });
+                   await supabase.from('quiz_submissions').delete().match({ user_id: userId, meeting_number: meetingNumber });
+                   await supabase.from('student_progress').delete().match({ user_id: userId, meeting_number: meetingNumber });
+                   
+                   showAlert('Student progress has been reset.', 'Success');
+                   loadAllSubmissions();
+              } catch(error) {
+                  showAlert(`Failed to reset progress: ${error.message}`);
+              } finally { showLoading(false); }
         };
 
         cancelGradeBtn.addEventListener('click', () => gradingModal.classList.add('hidden'));
@@ -1016,14 +1042,15 @@
                 renderRegisteredStudents(students);
             } catch (error) {
                 console.error("Error loading registered students:", error);
-                document.getElementById('registered-students-table').innerHTML = `<tr><td colspan="2" class="text-center p-4 text-red-500">Error loading student list.</td></tr>`;
+                document.getElementById('registered-students-table').innerHTML = `<tr><td colspan="3" class="text-center p-4 text-red-500">Error loading student list.</td></tr>`;
             }
         };
 
+        // ===== [MODIFIKASI] renderRegisteredStudents() =====
         const renderRegisteredStudents = (students) => {
             const tableBody = document.getElementById('registered-students-table');
             if (!students || students.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-gray-500">No students have registered yet.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="3" class="text-center p-4 text-gray-500">No students have registered yet.</td></tr>`;
                 return;
             }
 
@@ -1031,11 +1058,50 @@
                 <tr class="hover:bg-gray-50">
                     <td class="py-2 px-4 border-b">${student.full_name}</td>
                     <td class="py-2 px-4 border-b">${student.email}</td>
+                    <td class="py-2 px-4 border-b text-center">
+                        <button 
+                            data-email="${student.email}" 
+                            class="reset-student-password-btn bg-orange-500 text-white text-xs py-1 px-2 rounded hover:bg-orange-600"
+                        >
+                            Reset Password
+                        </button>
+                    </td>
                 </tr>
             `).join('');
+            
+            addLecturerPasswordResetListeners(); 
         };
 
-        // --- Content Management ---
+        // ===== [BARU] Fungsi untuk tombol reset password dosen =====
+        const addLecturerPasswordResetListeners = () => {
+            document.querySelectorAll('.reset-student-password-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const studentEmail = e.target.dataset.email;
+                    const confirmed = await showConfirm(`Are you sure you want to send a password reset link to ${studentEmail}? The student will receive an email to create a new password.`);
+                    
+                    if (confirmed) {
+                        showLoading(true);
+                        
+                        const { error } = await supabase.auth.resetPasswordForEmail(studentEmail, {
+                            redirectTo: 'https://amnienglish.github.io/english_matricula/',
+                        });
+
+                        showLoading(false);
+
+                        if (error) {
+                            showAlert(`Failed to send reset link: ${error.message}`);
+                        } else {
+                            showAlert(`A password reset link has been successfully sent to ${studentEmail}.`, 'Success');
+                        }
+                    }
+                });
+            });
+        };
+        
+        // (Sisa fungsi content management tidak berubah, bisa di-paste di sini)
+        // ...
+        
+        // --- CONTENT MANAGEMENT ---
         const setupContentManagement = async () => {
             try {
                 showLoading(true);
@@ -1093,7 +1159,8 @@
                 handleToggleLock(materialId, isLocked);
             }));
         };
-
+        
+        // (Sisa fungsi lain tidak berubah)
         const handleToggleLock = async (materialId, currentLockStatus) => {
             showLoading(true);
             const { error } = await supabase
@@ -1109,7 +1176,6 @@
             }
             showLoading(false);
         };
-
         const openMaterialEditor = (material) => {
             document.getElementById('material-id').value = material.id;
             document.getElementById('material-title').value = material.title;
@@ -1122,7 +1188,6 @@
             }
             materialEditorModal.classList.remove('hidden');
         };
-
         materialEditorForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             showLoading(true);
@@ -1147,9 +1212,7 @@
             }
             showLoading(false);
         });
-
         cancelMaterialBtn.addEventListener('click', () => materialEditorModal.classList.add('hidden'));
-        
         const selectImageForEditor = () => {
             const input = document.createElement('input');
             input.setAttribute('type', 'file');
@@ -1177,8 +1240,6 @@
                 }
             };
         };
-
-
         const openQuizEditor = (quiz) => {
             quizEditorForm.reset();
             document.getElementById('quiz-id').value = quiz.id;
@@ -1189,7 +1250,6 @@
             });
             quizEditorModal.classList.remove('hidden');
         };
-        
         const addQuestionToForm = (questionData = {}, index) => {
             const container = document.getElementById('questions-container');
             const questionId = `q-${Date.now()}-${index}`;
@@ -1201,7 +1261,6 @@
 
             const renderQuestionBody = (type, data) => {
                 if (type === 'fill_in_the_blank') {
-                    // If editing, reconstruct the format for the lecturer by putting the answer back inside the brackets
                     const displayText = (data.question && data.answer) 
                         ? data.question.replace(/\[BLANK\]/i, `[${data.answer}]`)
                         : (data.question || '');
@@ -1257,12 +1316,10 @@
                 bodyContainer.innerHTML = renderQuestionBody(selectedType, {}); 
             });
         };
-
         addQuestionBtn.addEventListener('click', () => {
             const count = document.getElementById('questions-container').childElementCount;
             addQuestionToForm({}, count);
         });
-
         quizEditorForm.addEventListener('submit', async(e) => {
             e.preventDefault();
             showLoading(true);
@@ -1325,8 +1382,8 @@
             }
             showLoading(false);
         });
-        
         cancelQuizBtn.addEventListener('click', () => quizEditorModal.classList.add('hidden'));
+
 
         // --- APP INITIALIZATION ---
         const loadInitialData = async (user) => {
@@ -1334,11 +1391,9 @@
             try {
                 let { data: profile, error } = await supabase.from('profiles').select('full_name, id, email').eq('id', user.id).single();
 
-                // Handle case where profile does not exist (e.g., failed registration step)
                 if (error && error.code === 'PGRST116') {
                     console.warn("User authenticated but profile not found. Attempting to create one.");
                     
-                    // We don't have the original full name, so we create a placeholder from the email.
                     const placeholderName = user.email.split('@')[0]
                         .replace(/[._-]/g, ' ')
                         .split(' ')
@@ -1352,7 +1407,6 @@
                         .single();
 
                     if (insertError) {
-                        // If the insert fails, there might be a more serious issue (like RLS policies)
                         throw new Error(`Failed to automatically create user profile: ${insertError.message}`);
                     }
                     
@@ -1360,12 +1414,10 @@
                     profile = newProfile;
 
                 } else if (error) {
-                    // Another unexpected database error occurred
                     throw error;
                 }
                 
                 if (!profile) {
-                    // This should theoretically not be reached if the above logic works, but as a safeguard:
                     throw new Error("User profile could not be loaded or created. Please contact support.");
                 }
 
@@ -1381,6 +1433,41 @@
             }
         };
         
+        // ===== [BARU] Listener untuk Form Reset Password =====
+        resetPasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPassword = document.getElementById('reset-password').value;
+            const confirmPassword = document.getElementById('confirm-reset-password').value;
+            resetError.textContent = '';
+
+            if (newPassword.length < 6) {
+                resetError.textContent = 'Password must be at least 6 characters long.';
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                resetError.textContent = 'Passwords do not match.';
+                return;
+            }
+
+            showLoading(true);
+
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+
+            showLoading(false);
+
+            if (error) {
+                resetError.textContent = `Error: ${error.message}`;
+            } else {
+                resetPasswordContainer.classList.add('hidden');
+                await showAlert('Password updated successfully! You can now log in with your new password.', 'Success');
+                window.location.hash = ''; // Membersihkan hash dari URL
+                showPage('auth');
+            }
+        });
+        
         const initializeApp = () => {
             showPage('auth');
             loginForm.addEventListener('submit', handleLogin);
@@ -1388,7 +1475,6 @@
             showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthForms(true); });
             showLoginLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthForms(false); });
 
-            // Initialize Quill Editor
             quillEditor = new Quill('#material-editor-container', {
                 theme: 'snow',
                 modules: {
@@ -1403,11 +1489,21 @@
             });
             quillEditor.getModule('toolbar').addHandler('image', selectImageForEditor);
             
-            supabase.auth.onAuthStateChange((_event, session) => {
+            // ===== [MODIFIKASI] onAuthStateChange =====
+            supabase.auth.onAuthStateChange(async (event, session) => {
                 const user = session?.user;
+
+                if (event === 'PASSWORD_RECOVERY') {
+                    showPage('reset-password');
+                    if (user) {
+                        resetEmailEl.textContent = user.email;
+                    }
+                    return;
+                }
+                
                 if (user) {
                     if (!currentUser || currentUser.id !== user.id) {
-                         loadInitialData(user);
+                        loadInitialData(user);
                     }
                 } else {
                     if (currentUser && currentUser.id !== 'lecturer') {
@@ -1422,5 +1518,4 @@
     </script>
 </body>
 </html>
-
 
