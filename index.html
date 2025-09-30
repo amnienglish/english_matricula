@@ -120,7 +120,6 @@
                             <!-- JS will populate this -->
                         </ul>
                     </nav>
-                    <!-- ===== [BARU] TOMBOL GANTI PASSWORD ===== -->
                     <button id="change-password-btn" class="mt-8 w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition">Change Password</button>
                     <button id="student-logout-btn" class="mt-2 w-full bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition">Logout</button>
                 </aside>
@@ -327,7 +326,6 @@
             </form>
         </div>
     </div>
-    <!-- ===== [BARU] MODAL GANTI PASSWORD ===== -->
     <div id="change-password-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-auto">
             <h3 class="text-lg font-bold mb-4">Change Your Password</h3>
@@ -383,7 +381,6 @@
         const materialEditorModal = document.getElementById('material-editor-modal'), materialEditorForm = document.getElementById('material-editor-form'), cancelMaterialBtn = document.getElementById('cancel-material-btn');
         const quizEditorModal = document.getElementById('quiz-editor-modal'), quizEditorForm = document.getElementById('quiz-editor-form'), cancelQuizBtn = document.getElementById('cancel-quiz-btn'), addQuestionBtn = document.getElementById('add-question-btn');
         
-        // ===== [BARU] Elemen untuk Ganti Password Mahasiswa =====
         const changePasswordModal = document.getElementById('change-password-modal');
         const changePasswordForm = document.getElementById('change-password-form');
 
@@ -549,7 +546,6 @@
             
             document.getElementById('student-logout-btn').addEventListener('click', handleLogout);
             
-            // ===== [BARU] Listener untuk tombol ganti password =====
             document.getElementById('change-password-btn').addEventListener('click', () => {
                 changePasswordModal.classList.remove('hidden');
                 document.getElementById('change-password-error').textContent = '';
@@ -700,21 +696,33 @@
                     html += `</div></div>`;
                 }
 
+                // ===== [MODIFIKASI] Bagian Unggah Tugas =====
                 if (meeting.assignment_enabled) {
                     const { data: assignment } = await supabase.from('assignments').select('*').eq('user_id', currentUser.id).eq('meeting_number', meeting.meeting_number).single();
                     html += `<div class="mt-8 p-4 border rounded-lg">
                                 <h3 class="text-xl font-bold mb-2">Assignment Submission</h3>`;
-                    if(assignment) {
+                    
+                    if (assignment) {
                         html += `<p class="text-green-600 font-semibold">✔ You have submitted your assignment.</p>
-                                <p class="text-sm mt-2">File: <a href="${assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">${assignment.file_url.split('/').pop()}</a></p>
-                                ${assignment.grade ? `<p class="mt-2 font-semibold">Grade: ${assignment.grade}</p><p class="mt-1 italic">Feedback: ${assignment.feedback || 'No feedback provided.'}</p>` : '<p class="mt-2 text-gray-600">Waiting for grade.</p>'}`;
-                    } else {
-                        html += `<p class="mb-2">${meeting.assignment_instruction || 'Upload your assignment file here.'}</p>
-                                <input type="file" id="assignment-file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                                <button id="upload-assignment-btn" data-meeting-number="${meeting.meeting_number}" data-material-id="${meeting.id}" class="mt-4 bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-600">Upload Assignment</button>`;
+                                 <p class="text-sm mt-2">Current File: <a href="${assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">${assignment.file_url.split('/').pop()}</a></p>
+                                 ${assignment.grade ? `<p class="mt-2 font-semibold">Grade: ${assignment.grade}</p><p class="mt-1 italic">Feedback: ${assignment.feedback || 'No feedback provided.'}</p>` : '<p class="mt-2 text-gray-600">Waiting for grade.</p>'}`;
                     }
+
+                    const instructionText = assignment 
+                        ? 'To submit a revision, upload a new file below. The previous file will be replaced.'
+                        : (meeting.assignment_instruction || 'Upload your assignment file here.');
+                    
+                    const buttonText = assignment ? 'Upload Revision' : 'Upload Assignment';
+
+                    html += `<div class="mt-4 pt-4 border-t">
+                                <p class="mb-2">${instructionText}</p>
+                                <input type="file" id="assignment-file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                <button id="upload-assignment-btn" data-meeting-number="${meeting.meeting_number}" data-material-id="${meeting.id}" class="mt-4 bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-600">${buttonText}</button>
+                            </div>`;
+                    
                     html += `</div>`;
                 }
+
 
                 contentBody.innerHTML = html;
                 addMeetingEventListeners();
@@ -1495,7 +1503,6 @@
             }
         });
         
-        // ===== [BARU] Listener untuk Form Ganti Password Mahasiswa =====
         changePasswordForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newPassword = document.getElementById('new-password').value;
