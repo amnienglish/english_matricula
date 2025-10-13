@@ -805,9 +805,11 @@
                                 <h3 class="text-xl font-bold mb-2">Assignment Submission</h3>`;
                     
                     if (assignment) {
-                        html += `<p class="text-green-600 font-semibold">✔ You have submitted your assignment.</p>
-                                <p class="text-sm mt-2">Current File: <a href="${assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">${assignment.file_url.split('/').pop()}</a></p>
-                                ${assignment.grade ? `<p class="mt-2 font-semibold">Grade: ${assignment.grade}</p><p class="mt-1 italic">Feedback: ${assignment.feedback || 'No feedback provided.'}</p>` : '<p class="mt-2 text-gray-600">Waiting for grade.</p>'}`;
+                        html += `<p class="text-green-600 font-semibold">✔ You have submitted your assignment.</p>`;
+                        if (assignment.file_url) {
+                            html += `<p class="text-sm mt-2">Current File: <a href="${assignment.file_url}" target="_blank" class="text-blue-600 hover:underline">${assignment.file_url.split('/').pop()}</a></p>`;
+                        }
+                        html += `${assignment.grade ? `<p class="mt-2 font-semibold">Grade: ${assignment.grade}</p><p class="mt-1 italic">Feedback: ${assignment.feedback || 'No feedback provided.'}</p>` : '<p class="mt-2 text-gray-600">Waiting for grade.</p>'}`;
                     }
 
                     const instructionText = assignment 
